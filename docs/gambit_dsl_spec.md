@@ -89,6 +89,11 @@ function decideAction(self: Unit, battle: BattleState): ActionPlan | null {
 - `[X]` … 列挙値（後述：状態異常／属性／敵種族）
 - 引数なしのものは括弧を省略可。
 
+### 3.1.1 「味方」「敵」の定義
+- **`ALLY_*` 条件は actor 自身を含む**。例：`ALLY_HP_LT(30)` は自分の HP が 30% 未満でも真になり、その場合 MATCH に自分自身が選ばれうる。これにより「ピンチの自分を含めて回復対象にする」表現が自然になる。
+- **`ENEMY_*` 条件は actor の敵陣営**。actor が敵側のときは「actor から見た敵」＝ プレイヤー陣営となる。
+- これにより、味方・敵いずれが actor でも**同じ評価器で対称に動く**。
+
 ### 3.2 一覧表
 
 | # | ID | 表示名 | 引数 | セマンティクス | MATCH |
@@ -537,6 +542,7 @@ interface GambitSet {
 | v0.1 | 2026-05-04 | 初版（条件25・行動15・対象6） |
 | v0.2 | 2026-05-04 | 条件を 25→17 に絞り込み。`ENEMY_HP_LT/GT` を `ENEMY_LOWEST_HP/HIGHEST_HP` の選択則条件に置換。戦況系（ターン・残数）を削除し `BOSS_PRESENT` のみ残す。メタ系（ALWAYS/RANDOM/CAN_AFFORD/SELF_LAST_ACTION_FAILED）を全削除。フォールバックは `ENEMY_EXISTS` で代替。schemaVersion を 2 に。 |
 | v0.3 | 2026-05-04 | HP/MP の「以上」条件 `SELF_HP_GTE`, `SELF_MP_GTE`, `ALLY_HP_GTE`, `ALLY_MP_GTE` の4種を追加。条件総数 17→21。バフ条件付与（健全な味方への先撃ち）や MP 余裕時の積極行動を表現可能に。schemaVersion は 2 のまま（型は union 拡張のみで後方互換）。 |
+| v0.3.1 | 2026-05-10 | §3.1.1 を追加：`ALLY_*` 条件は actor 自身を含み、`ENEMY_*` は actor の敵陣営を指すと明文化。評価器実装時の解釈ブレを防ぐため。 |
 
 ---
 
