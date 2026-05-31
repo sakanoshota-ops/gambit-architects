@@ -100,6 +100,7 @@ export function makeBattle(
     enemies,
     log: [],
     targetedAllyIds: [],
+    defendingThisTurn: new Set<string>(),
     ...overrides,
   };
 }

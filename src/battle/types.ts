@@ -81,6 +81,8 @@ export interface BattleState {
   log: BattleEvent[];
   /** 敵から狙われている味方の ID 集合（ALLY_TARGETED 条件で参照）*/
   targetedAllyIds: string[];
+  /** 当ターン DEFEND 状態のユニット ID 集合。ターン開始時にクリア */
+  defendingThisTurn: Set<string>;
 }
 
 /** 戦闘ログの 1 イベント。後段の表示・テスト・リプレイで使う */
@@ -96,4 +98,5 @@ export type BattleEvent =
   | { kind: "DAMAGE"; targetId: string; amount: number }
   | { kind: "HEAL"; targetId: string; amount: number }
   | { kind: "DOWN"; unitId: string }
-  | { kind: "BATTLE_END"; winner: "ALLY" | "ENEMY" };
+  | { kind: "NOT_IMPLEMENTED"; actorId: string; actionType: string }
+  | { kind: "BATTLE_END"; winner: "ALLY" | "ENEMY" | "TIMEOUT" };
