@@ -1,73 +1,42 @@
-# React + TypeScript + Vite
+# Gambit Architects
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ガンビット型 AI プログラミング × オートバトル × サンドボックス。
+FINAL FANTASY XII のガンビットを"主役"に据えた、Web ベースの個人開発タイトル。
 
-Currently, two official plugins are available:
+## ローカル起動
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```sh
+pnpm install        # 依存関係のインストール（初回のみ）
+pnpm test           # 全テスト実行（M1 時点で 61 件）
+pnpm run demo       # コンソールで戦闘デモを実行
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+開発サーバ（M2 以降の UI 開発で使用）：
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```sh
+pnpm dev            # → http://localhost:5173/
 ```
+
+## ドキュメント
+
+- [企画書](docs/gambit_game_planning_doc.md) … プロジェクト全体像と v1.0 凍結ライン
+- [ガンビット DSL 仕様 v0.3](docs/gambit_dsl_spec.md) … 条件 21・行動 15・対象 6
+- [M1 完了チェックリスト](docs/m1_checklist.md) … マイルストーン進捗
+- [エンジン選定資料](docs/engine_decision.md) … なぜ TypeScript + React + Vite なのか
+- [開発環境セットアップ手順](docs/dev_env_setup.md) … ゼロから手元を整える
+- [`CLAUDE.md`](CLAUDE.md) … AI 開発パートナー（Claude）への前提情報
+
+## 現在のマイルストーン
+
+**M1（コア検証フェーズ）完了**：ガンビット評価器・最小戦闘ループ・剣士ジョブ・敵 3 種・標準プリセット 4 種・コンソールデモまで実装済み。
+
+次は **M2（プレイアブル化）**：UI / ガンビット編集 UI / ジョブ 3 種 / 敵 5 体 / 深度 1〜5。
+
+## 技術スタック
+
+TypeScript 6 / React 19 / Vite 8 / Tailwind v4 / Vitest 4 / ESLint 10 / Prettier 3 / pnpm（Volta 管理 Node 24）。
+配信：Web → PWA。サーバ不使用。Cloudflare Pages 配備予定（M5 以降）。
+
+## ライセンス
+
+未定（v1.0 公開時に決定予定）。
