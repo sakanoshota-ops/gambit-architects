@@ -1,16 +1,13 @@
 /**
- * ガンビット編集画面（M2-F1：ルール操作 UI）
+ * ガンビット編集画面
  *
- * M2-F1 で実装：
- *   - 「下書き」モード：編集はローカル state、明示的に保存ボタンで dispatch
- *   - ルールの並べ替え（↑/↓）
- *   - 削除（確認ダイアログ）
- *   - 有効/無効トグル
- *   - プリセット 4 種からのロード（既存ルールを置き換え、確認ダイアログ）
+ * M2-F1：
+ *   - 下書きモード、並べ替え、削除、有効化、プリセットロード、保存/取消
  *
- * M2-F2 で実装予定：
- *   - 新規ルール追加（条件 → 対象 → 行動の 3 ステップ選択）
- *   - 既存ルールの編集（同じ 3 ステップ）
+ * M2-F2（追加）：
+ *   - 「+ ルール追加」ボタン → RulePicker を新規モードで開く
+ *   - ルールテキストクリックで RulePicker を編集モードで開く
+ *   - 保存時に DSL §9.1 のバリデーション
  */
 
 import { useEffect, useState } from "react";
@@ -23,7 +20,10 @@ import {
   presetTank,
 } from "../../gambit/presets";
 import type { GambitRule } from "../../gambit/types";
+import { MAX_RULES_PER_SET } from "../../gambit/types";
+import { isActionAllowedForJob, isTargetCompatible } from "../../gambit/uiHelpers";
 import { usePlayer } from "../../state/PlayerContext";
+import { RulePicker } from "../components/RulePicker";
 
 const PRESETS = [
   { key: "tank", label: "タンク", build: presetTank },
@@ -32,17 +32,18 @@ const PRESETS = [
   { key: "exploit", label: "弱点突き", build: presetExploitWeakness },
 ] as const;
 
+type PickerState = { mode: "add" } | { mode: "edit"; index: number } | null;
+
 export function GambitEditorScreen() {
   const { charId } = useParams<{ charId: string }>();
   const { data, dispatch } = usePlayer();
   const unit = data.party.find((u) => u.id === charId);
 
-  // 下書き state：編集中はここに保持し、保存で context に反映
   const [draftRules, setDraftRules] = useState<GambitRule[]>(() =>
     unit ? cloneRules(unit.gambitSet.rules) : [],
   );
+  const [picker, setPicker] = useState<PickerState>(null);
 
-  // 別キャラに遷移した時は下書きを差し替え
   useEffect(() => {
     if (unit) setDraftRules(cloneRules(unit.gambitSet.rules));
   }, [unit?.id]);
@@ -62,6 +63,7 @@ export function GambitEditorScreen() {
   }
 
   const isDirty = !rulesEqual(draftRules, unit.gambitSet.rules);
+  const canAdd = draftRules.length < MAX_RULES_PER_SET;
 
   // -- ハンドラ --
 
@@ -101,8 +103,32 @@ export function GambitEditorScreen() {
     setDraftRules(cloneRules(preset.rules));
   }
 
+  function openAddPicker() {
+    setPicker({ mode: "add" });
+  }
+
+  function openEditPicker(index: number) {
+    setPicker({ mode: "edit", index });
+  }
+
+  function handlePickerSave(rule: GambitRule) {
+    setDraftRules((rules) => {
+      if (picker?.mode === "edit") {
+        return rules.map((r, i) => (i === picker.index ? rule : r));
+      }
+      return [...rules, rule];
+    });
+    setPicker(null);
+  }
+
   function save() {
     if (!unit) return;
+    // バリデーション：DSL §9.1
+    const errors = validateRules(draftRules, unit.jobId);
+    if (errors.length > 0) {
+      alert("保存できません：\n" + errors.join("\n"));
+      return;
+    }
     dispatch({
       type: "UPDATE_UNIT_GAMBIT",
       unitId: unit.id,
@@ -117,6 +143,9 @@ export function GambitEditorScreen() {
 
   // -- 表示 --
 
+  const initialRule =
+    picker?.mode === "edit" ? draftRules[picker.index] : undefined;
+
   return (
     <section className="space-y-4">
       <div className="flex items-baseline justify-between">
@@ -127,7 +156,7 @@ export function GambitEditorScreen() {
       </div>
 
       <p className="text-sm text-slate-600">
-        ルール数: <strong>{draftRules.length}</strong> / 8
+        ルール数: <strong>{draftRules.length}</strong> / {MAX_RULES_PER_SET}
         {isDirty && (
           <span className="ml-3 text-amber-600 text-xs">（未保存の変更あり）</span>
         )}
@@ -150,14 +179,16 @@ export function GambitEditorScreen() {
             <span className="shrink-0 text-xs text-slate-500 w-6 text-center">
               {index + 1}.
             </span>
-            <span
+            <button
+              type="button"
+              onClick={() => openEditPicker(index)}
               className={
-                "flex-1 text-sm font-mono " +
+                "flex-1 text-left text-sm font-mono rounded px-1 hover:bg-slate-50 transition-colors " +
                 (rule.enabled ? "text-slate-800" : "line-through text-slate-400")
               }
             >
               {ruleSummary(rule)}
-            </span>
+            </button>
             <div className="shrink-0 flex items-center gap-1">
               <button
                 type="button"
@@ -196,6 +227,16 @@ export function GambitEditorScreen() {
         </p>
       )}
 
+      <button
+        type="button"
+        onClick={openAddPicker}
+        disabled={!canAdd}
+        className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        + ルール追加
+        {!canAdd && <span className="ml-1 text-xs text-slate-400">（上限）</span>}
+      </button>
+
       <div className="border-t border-slate-200 pt-4 space-y-2">
         <p className="text-sm font-medium text-slate-700">プリセットから読み込み</p>
         <div className="flex flex-wrap gap-2">
@@ -231,7 +272,14 @@ export function GambitEditorScreen() {
         </button>
       </div>
 
-      <p className="text-xs text-slate-400">（M2-F2 で 3 ステップ選択 UI を追加予定）</p>
+      <RulePicker
+        key={picker?.mode === "edit" ? `edit-${picker.index}` : "add"}
+        open={picker !== null}
+        jobId={unit.jobId}
+        initialRule={initialRule}
+        onSave={handlePickerSave}
+        onCancel={() => setPicker(null)}
+      />
     </section>
   );
 }
@@ -240,7 +288,6 @@ export function GambitEditorScreen() {
 // 補助関数
 // ============================================================================
 
-/** ルールを1ライン文字列にまとめる */
 function ruleSummary(rule: GambitRule): string {
   return `${describeCondition(rule.condition)} → ${rule.target.type} → ${describeAction(rule.action)}`;
 }
@@ -263,12 +310,29 @@ function describeAction(a: GambitRule["action"]): string {
   return a.type;
 }
 
-/** ルールリストを深いコピー */
 function cloneRules(rules: GambitRule[]): GambitRule[] {
   return rules.map((r) => ({ ...r }));
 }
 
-/** 2 つのルールリストが同じ内容かを比較（参照ではなく中身） */
 function rulesEqual(a: GambitRule[], b: GambitRule[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** DSL §9.1 の保存時バリデーション */
+function validateRules(rules: GambitRule[], jobId: import("../../battle/types").JobId): string[] {
+  const errors: string[] = [];
+  if (rules.length > MAX_RULES_PER_SET) {
+    errors.push(`ルール数が上限 ${MAX_RULES_PER_SET} を超えています`);
+  }
+  rules.forEach((rule, i) => {
+    if (!isTargetCompatible(rule.condition, rule.target.type)) {
+      errors.push(
+        `ルール ${i + 1}: 条件 ${rule.condition.type} と対象 ${rule.target.type} が不整合`,
+      );
+    }
+    if (!isActionAllowedForJob(rule.action, jobId)) {
+      errors.push(`ルール ${i + 1}: ${jobId} は ${rule.action.type} を使えません`);
+    }
+  });
+  return errors;
 }
