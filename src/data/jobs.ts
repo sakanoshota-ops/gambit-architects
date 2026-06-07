@@ -1,9 +1,9 @@
 /**
- * ジョブテンプレと味方ユニットの生成（M1）
+ * ジョブテンプレと味方ユニットの生成
  *
- * - M1 で実装するのは剣士（SWORDSMAN）のみ
- * - M2 で魔導士 / 治癒士を追加予定
- * - バランス値は M1 仮置き。M2 以降に data_schema.md で正式化
+ * - M1: 剣士（SWORDSMAN）
+ * - M2-B: 魔導士（MAGE）／治癒士（HEALER）を追加
+ * - バランス値は M2 仮置き。M3 以降に data_schema.md で正式化
  */
 
 import type { GambitSet } from "../gambit/types";
@@ -30,11 +30,43 @@ export const SWORDSMAN: JobTemplate = {
   mag: 5,
 };
 
+/** 魔導士：火力役。HP 低め・MP 高・atk 低・mag 高・def 低 */
+export const MAGE: JobTemplate = {
+  jobId: "MAGE",
+  displayName: "魔導士",
+  hp: 120,
+  mp: 80,
+  atk: 8,
+  def: 8,
+  mag: 25,
+};
+
+/** 治癒士：回復役。HP 中・MP 高・atk 低・mag 中・def 中 */
+export const HEALER: JobTemplate = {
+  jobId: "HEALER",
+  displayName: "治癒士",
+  hp: 150,
+  mp: 80,
+  atk: 8,
+  def: 12,
+  mag: 18,
+};
+
+/** v1.0 で実装する全ジョブテンプレを 1 つにまとめたエントリ */
+export const ALL_JOBS = {
+  SWORDSMAN,
+  MAGE,
+  HEALER,
+} as const satisfies Record<JobId, JobTemplate>;
+
 /**
- * 剣士の Unit を作る。
- * 個別調整したい値（POTION の所持数など）は overrides で指定。
+ * 任意のジョブテンプレから味方 Unit を作る共通ヘルパ。
+ *
+ * - `inventory` のデフォルトは POTION 3 個（M2 までの想定）
+ * - 個別調整は `overrides` で
  */
-export function createSwordsman(
+export function createPartyMember(
+  template: JobTemplate,
   id: string,
   name: string,
   gambitSet: GambitSet,
@@ -43,14 +75,14 @@ export function createSwordsman(
   return {
     id,
     name,
-    jobId: SWORDSMAN.jobId,
-    hp: SWORDSMAN.hp,
-    hpMax: SWORDSMAN.hp,
-    mp: SWORDSMAN.mp,
-    mpMax: SWORDSMAN.mp,
-    atk: SWORDSMAN.atk,
-    def: SWORDSMAN.def,
-    mag: SWORDSMAN.mag,
+    jobId: template.jobId,
+    hp: template.hp,
+    hpMax: template.hp,
+    mp: template.mp,
+    mpMax: template.mp,
+    atk: template.atk,
+    def: template.def,
+    mag: template.mag,
     statuses: [],
     statusDurations: {},
     isAlly: true,
@@ -62,4 +94,34 @@ export function createSwordsman(
     inventory: { POTION: 3 },
     ...overrides,
   };
+}
+
+/** 剣士 Unit を作る */
+export function createSwordsman(
+  id: string,
+  name: string,
+  gambitSet: GambitSet,
+  overrides: Partial<Unit> = {},
+): Unit {
+  return createPartyMember(SWORDSMAN, id, name, gambitSet, overrides);
+}
+
+/** 魔導士 Unit を作る */
+export function createMage(
+  id: string,
+  name: string,
+  gambitSet: GambitSet,
+  overrides: Partial<Unit> = {},
+): Unit {
+  return createPartyMember(MAGE, id, name, gambitSet, overrides);
+}
+
+/** 治癒士 Unit を作る */
+export function createHealer(
+  id: string,
+  name: string,
+  gambitSet: GambitSet,
+  overrides: Partial<Unit> = {},
+): Unit {
+  return createPartyMember(HEALER, id, name, gambitSet, overrides);
 }

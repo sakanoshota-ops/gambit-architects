@@ -17,9 +17,19 @@ import {
 } from "../../gambit/presets";
 import { MAX_RULES_PER_SET } from "../../gambit/types";
 import { runBattle } from "../../battle/runner";
-import { makeBattle } from "../../test/factories";
-import { BANDIT, createEnemy, GOBLIN, WOLF, type EnemyTemplate } from "../enemies";
-import { createSwordsman, SWORDSMAN } from "../jobs";
+import { makeBattle, makeGambitSet, makeRule } from "../../test/factories";
+import {
+  ALL_ENEMIES,
+  BANDIT,
+  createEnemy,
+  GOBLIN,
+  GOBLIN_KING,
+  GOLEM,
+  SKELETON,
+  WOLF,
+  type EnemyTemplate,
+} from "../enemies";
+import { ALL_JOBS, createHealer, createMage, createSwordsman, HEALER, MAGE, SWORDSMAN } from "../jobs";
 
 describe("data: 剣士テンプレ", () => {
   it("ステータス値が妥当（HP/MP/atk/def が正の整数）", () => {
@@ -136,6 +146,122 @@ describe("integration: data + runner", () => {
     // 最低 1 ターンは進んでいる
     expect(result.turns).toBeGreaterThan(0);
     // 何らかのアクションが起きている
+    expect(result.events.length).toBeGreaterThan(0);
+  });
+});
+
+// ============================================================================
+// Phase M2-B: 追加ジョブ・敵テンプレ
+// ============================================================================
+
+describe("data: M2-B 追加ジョブ（魔導士・治癒士）", () => {
+  it("MAGE テンプレが正しいバランス（MP/mag 高、HP/def 低）", () => {
+    expect(MAGE.hp).toBeLessThan(SWORDSMAN.hp); // 後衛なので HP は剣士未満
+    expect(MAGE.mp).toBeGreaterThan(SWORDSMAN.mp);
+    expect(MAGE.mag).toBeGreaterThan(SWORDSMAN.mag);
+    expect(MAGE.def).toBeLessThan(SWORDSMAN.def);
+  });
+
+  it("HEALER テンプレが正しいバランス（MP 高、回復役）", () => {
+    expect(HEALER.mp).toBeGreaterThan(SWORDSMAN.mp);
+    expect(HEALER.mag).toBeGreaterThan(SWORDSMAN.mag);
+  });
+
+  it("createMage は isAlly=true・jobId=MAGE のユニットを返す", () => {
+    const set = presetTank("mage_1");
+    const mage = createMage("mage_1", "Mage1", set);
+    expect(mage.isAlly).toBe(true);
+    expect(mage.jobId).toBe("MAGE");
+    expect(mage.hp).toBe(MAGE.hp);
+    expect(mage.hp).toBe(mage.hpMax);
+    expect(mage.mp).toBe(MAGE.mp);
+  });
+
+  it("createHealer は isAlly=true・jobId=HEALER のユニットを返す", () => {
+    const set = presetBeginner("healer_1");
+    const healer = createHealer("healer_1", "Healer1", set);
+    expect(healer.isAlly).toBe(true);
+    expect(healer.jobId).toBe("HEALER");
+    expect(healer.hp).toBe(HEALER.hp);
+    expect(healer.mp).toBe(HEALER.mp);
+  });
+
+  it("ALL_JOBS に 3 ジョブすべてが入っている", () => {
+    expect(Object.keys(ALL_JOBS).sort()).toEqual(["HEALER", "MAGE", "SWORDSMAN"]);
+  });
+});
+
+describe("data: M2-B 追加敵（SKELETON / GOLEM / GOBLIN_KING）", () => {
+  it("SKELETON は UNDEAD で HOLY 弱点", () => {
+    expect(SKELETON.enemyType).toBe("UNDEAD");
+    expect(SKELETON.weaknesses).toContain("HOLY");
+    expect(SKELETON.isBoss ?? false).toBe(false);
+  });
+
+  it("GOLEM は MACHINE で THUNDER 弱点・def 高め", () => {
+    expect(GOLEM.enemyType).toBe("MACHINE");
+    expect(GOLEM.weaknesses).toContain("THUNDER");
+    expect(GOLEM.def).toBeGreaterThan(BANDIT.def);
+    expect(GOLEM.isBoss ?? false).toBe(false);
+  });
+
+  it("GOBLIN_KING はボス、FIRE 弱点", () => {
+    expect(GOBLIN_KING.isBoss).toBe(true);
+    expect(GOBLIN_KING.enemyType).toBe("BOSS");
+    expect(GOBLIN_KING.weaknesses).toContain("FIRE");
+    expect(GOBLIN_KING.hp).toBeGreaterThan(BANDIT.hp); // ボスは最強
+  });
+
+  it("createEnemy(GOBLIN_KING) は isBoss=true のユニットを返す", () => {
+    const set = presetTank("boss");
+    const boss = createEnemy(GOBLIN_KING, "boss_1", set);
+    expect(boss.isBoss).toBe(true);
+    expect(boss.isAlly).toBe(false);
+  });
+
+  it("BOSS_PRESENT 条件は GOBLIN_KING がいると真になる", () => {
+    // 通常敵だけのケース：偽 → r1 不成立 → r2 で ATTACK
+    // ボス込みのケース：真 → r1 成立 → DEFEND
+    const set = makeGambitSet("a", [
+      makeRule("r1", { type: "BOSS_PRESENT" }, { type: "SELF" }, { type: "DEFEND" }),
+      makeRule("r2", { type: "ENEMY_EXISTS" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const ally = createSwordsman("a", "Sword1", set);
+    const goblin = createEnemy(GOBLIN, "g", presetTank("g"));
+    const boss = createEnemy(GOBLIN_KING, "boss", presetTank("boss"));
+
+    const battleNormal = makeBattle([ally], [goblin]);
+    const battleBoss = makeBattle([ally], [goblin, boss]);
+
+    expect(decideAction(ally, battleNormal)!.ruleId).toBe("r2");
+    expect(decideAction(ally, battleBoss)!.ruleId).toBe("r1");
+  });
+
+  it("ALL_ENEMIES に 6 種すべてが入っている", () => {
+    expect(Object.keys(ALL_ENEMIES).sort()).toEqual(
+      ["BANDIT", "GOBLIN", "GOBLIN_KING", "GOLEM", "SKELETON", "WOLF"].sort(),
+    );
+  });
+});
+
+describe("integration: 混成パーティで戦闘が完走する", () => {
+  it("剣士 + 魔導士 + 治癒士 + 剣士 vs SKELETON x 2 + GOLEM が決着する", () => {
+    const allies = [
+      createSwordsman("a1", "Sword1", presetTank("a1")),
+      createMage("a2", "Mage1", presetExploitWeakness("a2")),
+      createHealer("a3", "Healer1", presetBeginner("a3")),
+      createSwordsman("a4", "Sword2", presetFinisher("a4")),
+    ];
+    const enemies = [
+      createEnemy(SKELETON, "e1", presetTank("e1")),
+      createEnemy(SKELETON, "e2", presetTank("e2")),
+      createEnemy(GOLEM, "e3", presetTank("e3")),
+    ];
+
+    const result = runBattle(allies, enemies, { maxTurns: 50 });
+
+    expect(["ALLY", "ENEMY", "TIMEOUT"]).toContain(result.winner);
+    expect(result.turns).toBeGreaterThan(0);
     expect(result.events.length).toBeGreaterThan(0);
   });
 });

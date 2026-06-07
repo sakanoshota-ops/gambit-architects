@@ -1,7 +1,8 @@
 /**
- * 敵テンプレと敵ユニットの生成（M1）
+ * 敵テンプレと敵ユニットの生成
  *
- * - M1 では 3 種類（弱／普通／強）。ボスなし。
+ * - M1: 3 種類（GOBLIN 弱／WOLF 普通／BANDIT 強）。ボスなし。
+ * - M2-B: 追加 2 種（SKELETON / GOLEM）＋ボス 1 体（GOBLIN_KING）。
  * - バランス値は仮置き。M3 で 15〜20 種に拡張予定。
  */
 
@@ -17,6 +18,8 @@ export interface EnemyTemplate {
   def: number;
   mag: number;
   weaknesses: Element[];
+  /** ボス級フラグ。デフォルトは false（指定省略時に通常敵扱い） */
+  isBoss?: boolean;
 }
 
 /** ゴブリン：弱い前衛。火が弱点 */
@@ -55,6 +58,53 @@ export const BANDIT: EnemyTemplate = {
   weaknesses: ["ICE"],
 };
 
+/** スケルトン：不死系。聖が弱点 */
+export const SKELETON: EnemyTemplate = {
+  displayName: "スケルトン",
+  enemyType: "UNDEAD",
+  hp: 80,
+  mp: 0,
+  atk: 16,
+  def: 6,
+  mag: 0,
+  weaknesses: ["HOLY"],
+};
+
+/** ゴーレム：硬い機械。雷が弱点 */
+export const GOLEM: EnemyTemplate = {
+  displayName: "ゴーレム",
+  enemyType: "MACHINE",
+  hp: 150,
+  mp: 0,
+  atk: 20,
+  def: 18,
+  mag: 0,
+  weaknesses: ["THUNDER"],
+};
+
+/** ゴブリン王：ボス。火が弱点 */
+export const GOBLIN_KING: EnemyTemplate = {
+  displayName: "ゴブリン王",
+  enemyType: "BOSS",
+  hp: 400,
+  mp: 0,
+  atk: 30,
+  def: 15,
+  mag: 0,
+  weaknesses: ["FIRE"],
+  isBoss: true,
+};
+
+/** 全敵テンプレを 1 つにまとめたエントリ */
+export const ALL_ENEMIES = {
+  GOBLIN,
+  WOLF,
+  BANDIT,
+  SKELETON,
+  GOLEM,
+  GOBLIN_KING,
+} as const satisfies Record<string, EnemyTemplate>;
+
 /**
  * 敵 Unit を作る。
  * 各テンプレからパラメータを引き継ぎつつ、id とガンビットセットを差し込む。
@@ -82,7 +132,7 @@ export function createEnemy(
     isAlive: true,
     weaknesses: [...template.weaknesses],
     enemyType: template.enemyType,
-    isBoss: false,
+    isBoss: template.isBoss ?? false,
     gambitSet,
     inventory: {},
     ...overrides,
