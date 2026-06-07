@@ -44,11 +44,13 @@ function makeFragileParty(): PlayerData["party"] {
 /** state を data-testid でダンプするスタブ画面 */
 function HomeStub() {
   const { data } = usePlayer();
+  const last = data.dungeon.recentBattles[0];
   return (
     <div>
       <span data-testid="depth">{data.dungeon.currentDepth}</span>
-      <span data-testid="winner">{data.dungeon.lastBattle?.winner ?? "none"}</span>
-      <span data-testid="battle-depth">{data.dungeon.lastBattle?.depth ?? -1}</span>
+      <span data-testid="winner">{last?.winner ?? "none"}</span>
+      <span data-testid="battle-depth">{last?.depth ?? -1}</span>
+      <span data-testid="recent-count">{data.dungeon.recentBattles.length}</span>
     </div>
   );
 }
@@ -57,7 +59,7 @@ function renderBattleAt(party: PlayerData["party"], currentDepth = 1) {
   const settings: Settings = { battleSpeed: 4 };
   const initialData: PlayerData = {
     party,
-    dungeon: { currentDepth, maxDepth: currentDepth },
+    dungeon: { currentDepth, maxDepth: currentDepth, recentBattles: [] },
     settings,
   };
   return render(
@@ -100,6 +102,7 @@ describe("BattleScreen の戦闘終了時の state 更新", () => {
     expect(screen.getByTestId("depth")).toHaveTextContent("2");
     expect(screen.getByTestId("winner")).toHaveTextContent("ALLY");
     expect(screen.getByTestId("battle-depth")).toHaveTextContent("1");
+    expect(screen.getByTestId("recent-count")).toHaveTextContent("1");
   });
 
   it("敗北すると深度は変わらず、LastBattle に ENEMY が記録される", () => {

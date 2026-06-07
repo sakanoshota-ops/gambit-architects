@@ -37,9 +37,12 @@ export interface DungeonProgress {
   currentDepth: number;
   /** 到達した最高深度（M2 では currentDepth と同じ動きで OK） */
   maxDepth: number;
-  /** 直近の戦闘記録 */
-  lastBattle?: LastBattleRecord;
+  /** 直近の戦闘記録（新しい順、最大 5 件）*/
+  recentBattles: LastBattleRecord[];
 }
+
+/** 同時に保持する直近戦闘の最大件数 */
+export const MAX_RECENT_BATTLES = 5;
 
 export interface Settings {
   /** 戦闘倍速の既定値 */
@@ -61,7 +64,7 @@ export type PlayerAction =
   | { type: "SET_PARTY"; party: Unit[] }
   | { type: "UPDATE_UNIT_GAMBIT"; unitId: string; gambitSet: GambitSet }
   | { type: "INCREMENT_DEPTH" }
-  | { type: "SET_LAST_BATTLE"; lastBattle: LastBattleRecord }
+  | { type: "RECORD_BATTLE"; battle: LastBattleRecord }
   | { type: "SET_BATTLE_SPEED"; speed: 1 | 2 | 4 }
   | { type: "RESET_TO_DEFAULTS" };
 
@@ -90,8 +93,13 @@ function reducer(state: PlayerData, action: PlayerAction): PlayerData {
       };
     }
 
-    case "SET_LAST_BATTLE":
-      return { ...state, dungeon: { ...state.dungeon, lastBattle: action.lastBattle } };
+    case "RECORD_BATTLE": {
+      const next = [action.battle, ...state.dungeon.recentBattles].slice(
+        0,
+        MAX_RECENT_BATTLES,
+      );
+      return { ...state, dungeon: { ...state.dungeon, recentBattles: next } };
+    }
 
     case "SET_BATTLE_SPEED":
       return { ...state, settings: { ...state.settings, battleSpeed: action.speed } };

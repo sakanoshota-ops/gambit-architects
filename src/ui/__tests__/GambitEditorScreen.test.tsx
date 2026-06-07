@@ -34,7 +34,7 @@ function makeInitialData(): PlayerData {
   const settings: Settings = { battleSpeed: 2 };
   return {
     party: makePartyOf4(),
-    dungeon: { currentDepth: 1, maxDepth: 1 },
+    dungeon: { currentDepth: 1, maxDepth: 1, recentBattles: [] },
     settings,
   };
 }

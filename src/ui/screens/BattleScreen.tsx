@@ -57,8 +57,8 @@ export function BattleScreen() {
     if (!isFinished || !result || recordedRef.current) return;
     recordedRef.current = true;
     dispatch({
-      type: "SET_LAST_BATTLE",
-      lastBattle: {
+      type: "RECORD_BATTLE",
+      battle: {
         winner: result.winner,
         turns: result.turns,
         depth: depthRef.current,

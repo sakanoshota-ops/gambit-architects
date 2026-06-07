@@ -5,7 +5,7 @@ import { usePlayer } from "../../state/PlayerContext";
 export function HomeScreen() {
   const { data } = usePlayer();
   const navigate = useNavigate();
-  const last = data.dungeon.lastBattle;
+  const last = data.dungeon.recentBattles[0];
 
   return (
     <section className="space-y-6">

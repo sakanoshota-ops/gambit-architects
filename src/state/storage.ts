@@ -15,12 +15,23 @@ export function loadPlayerData(): PlayerData | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<PlayerData>;
+    const parsed = JSON.parse(raw);
     // 簡易スキーマチェック：壊れていたら捨てる
     if (!parsed || typeof parsed !== "object") return null;
     if (!Array.isArray(parsed.party) || parsed.party.length !== 4) return null;
     if (!parsed.dungeon || typeof parsed.dungeon.currentDepth !== "number") return null;
     if (!parsed.settings) return null;
+
+    // M2-H マイグレーション：lastBattle → recentBattles
+    if (!Array.isArray(parsed.dungeon.recentBattles)) {
+      if (parsed.dungeon.lastBattle) {
+        parsed.dungeon.recentBattles = [parsed.dungeon.lastBattle];
+      } else {
+        parsed.dungeon.recentBattles = [];
+      }
+      delete parsed.dungeon.lastBattle;
+    }
+
     return parsed as PlayerData;
   } catch {
     return null;
