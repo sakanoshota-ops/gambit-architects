@@ -34,15 +34,15 @@
 ## 1. M2 完了の判定基準
 
 ### 1.1 魔法・状態異常の実効果（最小実装）
-- [ ] `CAST_OFFENSE(FIRE)`：単体属性ダメージ。`weaknesses` に FIRE があると 1.5x
-- [ ] `CAST_HEAL(CURE)`：単体 HP 回復
-- [ ] `CAST_REVIVE(RAISE)`：戦闘不能から復活（HP 25% で復活）
-- [ ] `CAST_BUFF(PROTECT)`：物理被ダメ -25% 付与（状態 `PROTECT` を Status に追加）
-- [ ] `CAST_DEBUFF(POISON)`：敵に Status `POISON` を付与
-- [ ] `CAST_CURE_STATUS(POISON)`：POISON Status を解除
-- [ ] `SKILL(POWER_SLASH)`：物理 1.5x ダメージ
-- [ ] **POISON のターン処理**：毎ターン開始時に POISON 付与のユニットに max HP の 8% ダメージ
-- [ ] 残り 24 コンテンツ ID は引き続き NOT_IMPLEMENTED（M3〜M5 で順次実装）
+- [x] `CAST_OFFENSE(FIRE 系)`：単体属性ダメージ `max(1, mag*2 - def)`、弱点で 1.5x（2026-05-10）
+- [x] `CAST_HEAL(CURE 系)`：単体 HP 回復 `mag*3`、hpMax clamp（2026-05-10）
+- [x] `CAST_REVIVE(RAISE)`：戦闘不能から 25% HP で復活（2026-05-10）
+- [x] `CAST_BUFF(PROTECT)`：4 ターン PROTECT 付与、物理被ダメ x0.75（2026-05-10）
+- [x] `CAST_DEBUFF(POISON)`：5 ターン POISON 付与（2026-05-10）
+- [x] `CAST_CURE_STATUS(X)`：指定 Status を即解除（2026-05-10）
+- [x] `SKILL(POWER_SLASH)`：物理 1.5x ダメージ（2026-05-10）
+- [x] **POISON のターン処理**：ターン開始時に maxHP の 8% ダメージ、5 ターンで自然消滅（2026-05-10）
+- [x] 残り 24 コンテンツ ID は NOT_IMPLEMENTED 継続（M3〜M5 で順次）
 
 ### 1.2 ジョブ 3 種
 - [ ] **魔導士**：HP 中（120）、MP 高（80）、atk 低、mag 高、def 低

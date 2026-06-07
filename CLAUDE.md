@@ -126,7 +126,8 @@
 
 - `docs/gambit_game_planning_doc.md` … 企画書 v0.2 本体（個人開発スケールダウン版）
 - `docs/gambit_dsl_spec.md` … ガンビットDSL最小仕様 v0.3（条件21・行動15・対象6・JSON型定義）
-- `docs/m1_checklist.md` … M1 完了チェックリスト v0.1（コア検証フェーズの到達点）
+- `docs/m1_checklist.md` … M1 完了チェックリスト v0.2（コア検証フェーズの到達点／全項目チェック済）
+- `docs/m2_checklist.md` … M2 完了チェックリスト v0.1（プレイアブル化フェーズの到達点）
 - `docs/engine_decision.md` … エンジン選定の判断材料 v0.2（C 案で確定）
 - `docs/dev_env_setup.md` … 開発環境セットアップ手順 v0.1（Node/pnpm/Git/VS Code/Vite 初期化）
 - 今後追加予定：
