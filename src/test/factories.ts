@@ -59,6 +59,7 @@ export function makeUnit(overrides: UnitOverrides): Unit {
     def: 5,
     mag: 5,
     statuses: [],
+    statusDurations: {},
     isAlly: overrides.isAlly,
     isAlive: true,
     weaknesses: [],

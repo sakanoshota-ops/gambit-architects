@@ -44,6 +44,8 @@ export interface Unit {
   // -- 状態 --
   /** 付与中の状態異常／バフ（重複を許容しない実装を想定）*/
   statuses: Status[];
+  /** 各 Status の残ターン数。0 になると statuses からも除外される */
+  statusDurations: Partial<Record<Status, number>>;
 
   // -- 陣営 --
   /** true: プレイヤー側、false: 敵側 */

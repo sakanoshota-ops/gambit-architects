@@ -77,6 +77,7 @@ export function createEnemy(
     def: template.def,
     mag: template.mag,
     statuses: [],
+    statusDurations: {},
     isAlly: false,
     isAlive: true,
     weaknesses: [...template.weaknesses],

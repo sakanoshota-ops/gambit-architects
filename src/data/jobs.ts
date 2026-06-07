@@ -52,6 +52,7 @@ export function createSwordsman(
     def: SWORDSMAN.def,
     mag: SWORDSMAN.mag,
     statuses: [],
+    statusDurations: {},
     isAlly: true,
     isAlive: true,
     weaknesses: [],
