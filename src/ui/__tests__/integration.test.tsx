@@ -15,7 +15,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 
 import { createSwordsman } from "../../data/jobs";
-import { presetFinisher, presetTank } from "../../gambit/presets";
+import { presetFinisher } from "../../gambit/presets";
 import {
   PlayerProvider,
   type PlayerData,

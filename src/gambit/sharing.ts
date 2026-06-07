@@ -79,11 +79,16 @@ export async function decodeGambitSet(input: string): Promise<GambitSet | null> 
 /**
  * Uint8Array を 1 チャンクで吐く ReadableStream を作る。
  * `Blob.stream()` の代替（jsdom が未対応のため）。
+ *
+ * 型は `BufferSource` にしてある：CompressionStream / DecompressionStream の
+ * `writable` 側が `WritableStream<BufferSource>` で、pipeThrough の型整合に必要。
  */
-function bytesToReadableStream(bytes: Uint8Array): ReadableStream<Uint8Array> {
-  return new ReadableStream<Uint8Array>({
+function bytesToReadableStream(bytes: Uint8Array): ReadableStream<BufferSource> {
+  return new ReadableStream<BufferSource>({
     start(controller) {
-      controller.enqueue(bytes);
+      // TS 6 では Uint8Array<ArrayBufferLike> と BufferSource(=ArrayBuffer想定) の
+      // 型差があるため、ここでだけ BufferSource に明示キャスト
+      controller.enqueue(bytes as BufferSource);
       controller.close();
     },
   });

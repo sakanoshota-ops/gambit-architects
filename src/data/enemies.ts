@@ -6,8 +6,8 @@
  * - バランス値は仮置き。M3 で 15〜20 種に拡張予定。
  */
 
-import type { GambitSet } from "../gambit/types";
-import type { Element, EnemyType, Unit } from "../battle/types";
+import type { Element, EnemyType, GambitSet } from "../gambit/types";
+import type { Unit } from "../battle/types";
 
 export interface EnemyTemplate {
   displayName: string;
