@@ -1,0 +1,149 @@
+/**
+ * プレイヤーデータの Context / Reducer / Provider
+ *
+ * - 単一の `PlayerData` を Context に乗せ、useReducer で更新する
+ * - 任意のディスパッチでも自動で localStorage に保存（useEffect）
+ * - SSR 想定なし（PWA / Vite CSR）
+ */
+
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useReducer,
+  type Dispatch,
+  type ReactNode,
+} from "react";
+
+import type { Unit } from "../battle/types";
+import type { GambitSet } from "../gambit/types";
+import { createDefaultPlayerData } from "./defaults";
+import { loadPlayerData, savePlayerData } from "./storage";
+
+// ============================================================================
+// 型定義
+// ============================================================================
+
+export type Winner = "ALLY" | "ENEMY" | "TIMEOUT";
+
+export interface LastBattleRecord {
+  winner: Winner;
+  turns: number;
+  depth: number;
+}
+
+export interface DungeonProgress {
+  /** 次に挑戦する深度 */
+  currentDepth: number;
+  /** 到達した最高深度（M2 では currentDepth と同じ動きで OK） */
+  maxDepth: number;
+  /** 直近の戦闘記録 */
+  lastBattle?: LastBattleRecord;
+}
+
+export interface Settings {
+  /** 戦闘倍速の既定値 */
+  battleSpeed: 1 | 2 | 4;
+}
+
+export interface PlayerData {
+  /** 4 体のパーティ。順序固定 */
+  party: Unit[];
+  dungeon: DungeonProgress;
+  settings: Settings;
+}
+
+// ============================================================================
+// Action / Reducer
+// ============================================================================
+
+export type PlayerAction =
+  | { type: "SET_PARTY"; party: Unit[] }
+  | { type: "UPDATE_UNIT_GAMBIT"; unitId: string; gambitSet: GambitSet }
+  | { type: "INCREMENT_DEPTH" }
+  | { type: "SET_LAST_BATTLE"; lastBattle: LastBattleRecord }
+  | { type: "SET_BATTLE_SPEED"; speed: 1 | 2 | 4 }
+  | { type: "RESET_TO_DEFAULTS" };
+
+function reducer(state: PlayerData, action: PlayerAction): PlayerData {
+  switch (action.type) {
+    case "SET_PARTY":
+      return { ...state, party: action.party };
+
+    case "UPDATE_UNIT_GAMBIT":
+      return {
+        ...state,
+        party: state.party.map((u) =>
+          u.id === action.unitId ? { ...u, gambitSet: action.gambitSet } : u,
+        ),
+      };
+
+    case "INCREMENT_DEPTH": {
+      const next = state.dungeon.currentDepth + 1;
+      return {
+        ...state,
+        dungeon: {
+          ...state.dungeon,
+          currentDepth: next,
+          maxDepth: Math.max(state.dungeon.maxDepth, next),
+        },
+      };
+    }
+
+    case "SET_LAST_BATTLE":
+      return { ...state, dungeon: { ...state.dungeon, lastBattle: action.lastBattle } };
+
+    case "SET_BATTLE_SPEED":
+      return { ...state, settings: { ...state.settings, battleSpeed: action.speed } };
+
+    case "RESET_TO_DEFAULTS":
+      return createDefaultPlayerData();
+  }
+}
+
+// ============================================================================
+// Context / Provider / Hook
+// ============================================================================
+
+interface PlayerContextValue {
+  data: PlayerData;
+  dispatch: Dispatch<PlayerAction>;
+}
+
+const PlayerContext = createContext<PlayerContextValue | null>(null);
+
+function initPlayerData(): PlayerData {
+  return loadPlayerData() ?? createDefaultPlayerData();
+}
+
+export interface PlayerProviderProps {
+  children: ReactNode;
+  /** テスト用：初期データを明示的に指定（localStorage を読みたくない場合）*/
+  initialData?: PlayerData;
+}
+
+export function PlayerProvider({ children, initialData }: PlayerProviderProps) {
+  const [data, dispatch] = useReducer(
+    reducer,
+    initialData ?? null,
+    initialData ? () => initialData : initPlayerData,
+  );
+
+  // データ変更時に永続化
+  useEffect(() => {
+    savePlayerData(data);
+  }, [data]);
+
+  return (
+    <PlayerContext.Provider value={{ data, dispatch }}>{children}</PlayerContext.Provider>
+  );
+}
+
+/** Player Data を読み書きするためのフック */
+export function usePlayer(): PlayerContextValue {
+  const ctx = useContext(PlayerContext);
+  if (!ctx) {
+    throw new Error("usePlayer must be used within <PlayerProvider>");
+  }
+  return ctx;
+}
