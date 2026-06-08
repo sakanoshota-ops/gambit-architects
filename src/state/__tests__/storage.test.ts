@@ -62,4 +62,36 @@ describe("loadPlayerData マイグレーション", () => {
     const loaded = loadPlayerData();
     expect(loaded?.dungeon.recentBattles).toEqual([]);
   });
+
+  it("旧形式で Unit.equipment が無いユニットは equipment: {} で補完される（M3-C）", () => {
+    const data = createDefaultPlayerData();
+    // 旧データを再現：各 unit から equipment を削除
+    const rawOld = JSON.parse(JSON.stringify(data));
+    for (const u of rawOld.party) {
+      delete u.equipment;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rawOld));
+
+    const loaded = loadPlayerData();
+    expect(loaded).not.toBeNull();
+    for (const u of loaded!.party) {
+      expect(u.equipment).toBeDefined();
+      expect(u.equipment).toEqual({});
+    }
+  });
+
+  it("旧形式で Unit.statusDurations が無いユニットは {} で補完される", () => {
+    const data = createDefaultPlayerData();
+    const rawOld = JSON.parse(JSON.stringify(data));
+    for (const u of rawOld.party) {
+      delete u.statusDurations;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rawOld));
+
+    const loaded = loadPlayerData();
+    expect(loaded).not.toBeNull();
+    for (const u of loaded!.party) {
+      expect(u.statusDurations).toEqual({});
+    }
+  });
 });

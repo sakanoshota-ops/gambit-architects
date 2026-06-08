@@ -63,6 +63,11 @@ export interface PlayerData {
 export type PlayerAction =
   | { type: "SET_PARTY"; party: Unit[] }
   | { type: "UPDATE_UNIT_GAMBIT"; unitId: string; gambitSet: GambitSet }
+  | {
+      type: "UPDATE_UNIT_EQUIPMENT";
+      unitId: string;
+      equipment: import("../data/equipment").Equipment;
+    }
   | { type: "INCREMENT_DEPTH" }
   | { type: "RECORD_BATTLE"; battle: LastBattleRecord }
   | { type: "SET_BATTLE_SPEED"; speed: 1 | 2 | 4 }
@@ -78,6 +83,14 @@ function reducer(state: PlayerData, action: PlayerAction): PlayerData {
         ...state,
         party: state.party.map((u) =>
           u.id === action.unitId ? { ...u, gambitSet: action.gambitSet } : u,
+        ),
+      };
+
+    case "UPDATE_UNIT_EQUIPMENT":
+      return {
+        ...state,
+        party: state.party.map((u) =>
+          u.id === action.unitId ? { ...u, equipment: action.equipment } : u,
         ),
       };
 

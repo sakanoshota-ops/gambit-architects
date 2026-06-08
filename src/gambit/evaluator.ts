@@ -14,8 +14,50 @@
  */
 
 import type { BattleState, Unit } from "../battle/types";
-import type { Action, Condition, Target } from "./types";
+import { SENSORS } from "../data/equipment";
+import type { Action, Condition, ConditionType, Target } from "./types";
 import { getActionMpCost } from "./actionCost";
+
+// ============================================================================
+// M3-E：センサー判定
+// ============================================================================
+
+/** 全センサーで「100% にしてくれる」条件タイプの集合（事前計算） */
+const SENSOR_GATED_CONDITIONS: Set<ConditionType> = new Set(
+  Object.values(SENSORS).flatMap((s) => s.enables),
+);
+
+/** その条件タイプはセンサーで精度向上できるか */
+function isSensorGated(conditionType: ConditionType): boolean {
+  return SENSOR_GATED_CONDITIONS.has(conditionType);
+}
+
+/** actor が装備しているセンサーが、この条件タイプを 100% にするか */
+function actorHasSensorFor(actor: Unit, conditionType: ConditionType): boolean {
+  const sensorId = actor.equipment.sensor;
+  if (!sensorId) return false;
+  return SENSORS[sensorId].enables.includes(conditionType);
+}
+
+/**
+ * センサーゲート判定：
+ *   - ゲート対象外 → 常に true
+ *   - ゲート対象 + actor がセンサーを装備 → 常に true
+ *   - ゲート対象 + センサー無し + rng 未注入 → true（後方互換、既存テスト保護）
+ *   - ゲート対象 + センサー無し + rng < 0.5 → false（フォールスルー）
+ *   - ゲート対象 + センサー無し + rng >= 0.5 → true
+ */
+function senseCheck(
+  conditionType: ConditionType,
+  actor: Unit,
+  battle: BattleState,
+): boolean {
+  if (!isSensorGated(conditionType)) return true;
+  if (actorHasSensorFor(actor, conditionType)) return true;
+  const rng = battle.rng;
+  if (!rng) return true;
+  return rng() >= 0.5;
+}
 
 // ============================================================================
 // 公開 API
@@ -147,11 +189,13 @@ function evaluateCondition(
 
     // -- 味方（7）：ALLY_* は actor 自身も含む（DSL §3.1.1）--
     case "ALLY_HP_LT": {
+      if (!senseCheck("ALLY_HP_LT", actor, battle)) return { matched: false };
       const candidates = aliveAllies.filter((u) => hpPercent(u) < condition.value);
       const picked = pickBy(candidates, hpPercent, /* preferHigher */ false);
       return picked ? { matched: true, matchedUnit: picked } : { matched: false };
     }
     case "ALLY_HP_GTE": {
+      if (!senseCheck("ALLY_HP_GTE", actor, battle)) return { matched: false };
       const candidates = aliveAllies.filter((u) => hpPercent(u) >= condition.value);
       const picked = pickBy(candidates, hpPercent, /* preferHigher */ true);
       return picked ? { matched: true, matchedUnit: picked } : { matched: false };
@@ -167,6 +211,7 @@ function evaluateCondition(
       return picked ? { matched: true, matchedUnit: picked } : { matched: false };
     }
     case "ALLY_HAS_STATUS": {
+      if (!senseCheck("ALLY_HAS_STATUS", actor, battle)) return { matched: false };
       const matched = aliveAllies.find((u) => u.statuses.includes(condition.status));
       return matched ? { matched: true, matchedUnit: matched } : { matched: false };
     }

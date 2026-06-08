@@ -32,6 +32,19 @@ export function loadPlayerData(): PlayerData | null {
       delete parsed.dungeon.lastBattle;
     }
 
+    // M3-C マイグレーション：Unit.equipment が無いユニットに空オブジェクトを補う
+    for (const u of parsed.party) {
+      if (!u || typeof u !== "object") continue;
+      const unit = u as Record<string, unknown>;
+      if (!unit.equipment || typeof unit.equipment !== "object") {
+        unit.equipment = {};
+      }
+      // M3-A 関連の statusDurations が無い場合の保険
+      if (!unit.statusDurations || typeof unit.statusDurations !== "object") {
+        unit.statusDurations = {};
+      }
+    }
+
     return parsed as PlayerData;
   } catch {
     return null;
