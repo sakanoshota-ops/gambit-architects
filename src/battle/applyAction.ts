@@ -28,6 +28,11 @@ import type {
   Status,
 } from "../gambit/types";
 import { getActionMpCost } from "../gambit/actionCost";
+import {
+  getEffectiveAtk,
+  getEffectiveDef,
+  getEffectiveMag,
+} from "../data/equipment";
 import type { BattleState, Unit } from "./types";
 
 export interface ApplyContext {
@@ -152,7 +157,8 @@ export function applyAction(action: Action, ctx: ApplyContext): void {
 
     case "CAST_HEAL": {
       const mult = HEAL_MULT_BY_SPELL[action.spellId];
-      const heal = Math.max(1, actor.mag * mult);
+      // M3-C: 装備込みの実効 mag
+      const heal = Math.max(1, getEffectiveMag(actor) * mult);
       for (const target of targets) {
         const restored = Math.min(target.hpMax - target.hp, heal);
         target.hp += restored;
@@ -282,7 +288,11 @@ function calculatePhysicalDamage(
     }
   }
 
-  const base = Math.max(MIN_DAMAGE, attacker.atk - target.def);
+  // M3-C: 装備込みの実効ステータス
+  const attackerAtk = getEffectiveAtk(attacker);
+  const targetDef = getEffectiveDef(target);
+
+  const base = Math.max(MIN_DAMAGE, attackerAtk - targetDef);
   let dmg = Math.floor(base * multiplier);
 
   if (battle.defendingThisTurn.has(target.id)) {
@@ -301,7 +311,11 @@ function calculateMagicDamage(
   element: Element,
   multiplier: number,
 ): number {
-  let dmg = Math.max(MIN_DAMAGE, caster.mag * 2 - target.def);
+  // M3-C: 装備込みの実効ステータス
+  const casterMag = getEffectiveMag(caster);
+  const targetDef = getEffectiveDef(target);
+
+  let dmg = Math.max(MIN_DAMAGE, casterMag * 2 - targetDef);
   dmg = Math.floor(dmg * multiplier);
   if (target.weaknesses.includes(element)) {
     dmg = Math.floor(dmg * WEAKNESS_MULT);

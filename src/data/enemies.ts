@@ -135,6 +135,7 @@ export function createEnemy(
     isBoss: template.isBoss ?? false,
     gambitSet,
     inventory: {},
+    equipment: {},
     ...overrides,
   };
 }

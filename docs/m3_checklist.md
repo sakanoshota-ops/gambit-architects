@@ -40,19 +40,21 @@
 - [x] `ALLY_TARGETED` 条件が同ターン反応（predictTargetedAllies で実現）（2026-05-10）
 
 ### 1.2 残コンテンツ ID の実効果（M2 で 7 ID → M3 で全 31 ID）
-- [ ] **回復魔法**：CURA / CURAGA / CURE_ALL（mag・対象数に応じて効果量）
-- [ ] **攻撃魔法 全属性**：BLIZZARD/BLIZZARA、THUNDER/THUNDARA、HOLY_BOLT、DARK_BOLT、FIRA
-- [ ] **バフ**：SHELL（魔法被ダメ -25%）、REGEN（毎ターン回復）、HASTE（Status に "HASTE" 追加）
-- [ ] **デバフ**：SILENCE（魔法封印 = MP 行動不可）、BLIND（物理命中 -50%）、SLOW
-- [ ] **アイテム**：HI_POTION（強回復）、ETHER（MP回復）、ANTIDOTE/EYE_DROPS/ECHO_HERB（状態回復）、PHOENIX_DOWN（蘇生）
-- [ ] **剣士スキル**：GUARD_BREAK（敵 def -25% 1ターン）、WHIRLWIND（範囲攻撃）
+- [x] **回復魔法**：CURA（mag x5）/ CURAGA（x8）/ CURE_ALL（x4 全体）（2026-05-10）
+- [x] **攻撃魔法 全属性**：FIRA/BLIZZARA/THUNDARA（1.5x）、BLIZZARD/THUNDER/HOLY_BOLT/DARK_BOLT（1.0x）（2026-05-10）
+- [x] **バフ**：SHELL（魔法被ダメ -25%）、REGEN（毎ターン HP +5%）、HASTE（flag のみ、M5 で ATB と連動）（2026-05-10）
+- [x] **デバフ**：SILENCE（CAST_* 禁止）、BLIND（rng < 0.5 で miss）、SLOW（行動順末尾）（2026-05-10）
+- [x] **アイテム**：HI_POTION (+80HP) / ETHER (+30MP) / ANTIDOTE / EYE_DROPS / ECHO_HERB / PHOENIX_DOWN（蘇生 25%）（2026-05-10）
+- [x] **剣士スキル**：GUARD_BREAK（物理 1.3x）、WHIRLWIND（全体 0.8x）（2026-05-10）
+- [x] BattleState.rng 注入機構（M3-E のセンサーでも使用）（2026-05-10）
 
 ### 1.3 装備データモデル
-- [ ] **武器テンプレ**：8〜10 種、`atkBonus` を持つ
-- [ ] **防具テンプレ**：8〜10 種、`defBonus` を持つ
-- [ ] **センサーテンプレ**：3〜4 種（後述）
-- [ ] `Unit` に `equipment: { weapon?, armor?, sensor? }` を追加
-- [ ] ダメージ計算が装備ボーナスを加味（`actor.atk + weaponBonus`）
+- [x] **武器テンプレ 9 種**：剣/ロッド/メイス x 3 段階、StatBonus を持つ（2026-05-10）
+- [x] **防具テンプレ 9 種**：重装/軽装/中装 x 3 段階、StatBonus を持つ（2026-05-10）
+- [x] **センサーテンプレ 4 種**：HP/STATUS/ELEMENT/BASIC、enables[] を持つ（M3-E で評価器が読む）（2026-05-10）
+- [x] `Unit` に `equipment` フィールド追加（default `{}` で後方互換）（2026-05-10）
+- [x] ダメージ計算が装備ボーナスを加味（getEffectiveAtk/Def/Mag）（2026-05-10）
+- [x] CAST_HEAL も実効 mag で回復量計算（2026-05-10）
 
 ### 1.4 センサーシステム（B 案、50% 成功）
 - [ ] `BattleState.rng?: () => number` を追加（デフォルト「常に 1.0」＝センサーなしでも成功）

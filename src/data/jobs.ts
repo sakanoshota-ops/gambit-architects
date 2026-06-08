@@ -92,6 +92,7 @@ export function createPartyMember(
     isBoss: false,
     gambitSet,
     inventory: { POTION: 3 },
+    equipment: {},
     ...overrides,
   };
 }

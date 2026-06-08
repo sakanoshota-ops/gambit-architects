@@ -66,6 +66,9 @@ export interface Unit {
 
   // -- インベントリ（M1 は POTION 数個のみ）--
   inventory: Partial<Record<ItemId, number>>;
+
+  // -- 装備（M3-C 以降）。空オブジェクトがデフォルト --
+  equipment: import("../data/equipment").Equipment;
 }
 
 /** Enemy は意味的なエイリアス。型構造としては Unit と同じ */

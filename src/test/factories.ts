@@ -67,6 +67,7 @@ export function makeUnit(overrides: UnitOverrides): Unit {
     isBoss: false,
     gambitSet: overrides.gambitSet,
     inventory: {},
+    equipment: {},
   };
   return { ...base, ...overrides };
 }
