@@ -71,9 +71,11 @@ export function runBattle(
 
     // ターン開始時の処理：
     //   ① DOT（POISON など）を適用
-    //   ② 状態異常の残ターン数を 1 減らし、0 で除去
-    //   ③ PROVOKE の残ターン tick
+    //   ② REGEN tick（毎ターン HP 5% 回復）
+    //   ③ 状態異常の残ターン数を 1 減らし、0 で除去
+    //   ④ PROVOKE の残ターン tick
     applyTurnStartDot(battle);
+    applyTurnStartRegen(battle);
     tickStatusDurations(battle);
     tickProvokeDurations(battle);
 
@@ -88,8 +90,8 @@ export function runBattle(
     // → INTERPOSE/ALLY_TARGETED 系のガンビットが正しく機能するため
     battle.targetedAllyIds = predictTargetedAllies(battle);
 
-    // 行動順：味方 → 敵（M1 はこの単純順）
-    const turnOrder: Unit[] = [...battle.allies, ...battle.enemies];
+    // 行動順：味方 → 敵。各陣営内で SLOW 持ちは最後（stable sort）
+    const turnOrder: Unit[] = [...orderBySlow(battle.allies), ...orderBySlow(battle.enemies)];
     const unitsById = makeUnitsById(battle);
 
     for (const actor of turnOrder) {
@@ -171,6 +173,29 @@ function finalize(battle: BattleState, winner: Winner, turns: number): BattleRes
   };
 }
 
+/** ターン開始時の REGEN による HP 回復（M3-B） */
+function applyTurnStartRegen(battle: BattleState): void {
+  for (const unit of [...battle.allies, ...battle.enemies]) {
+    if (!unit.isAlive) continue;
+    if (!unit.statuses.includes("REGEN")) continue;
+    const heal = Math.max(1, Math.floor(unit.hpMax * 0.05));
+    const restored = Math.min(unit.hpMax - unit.hp, heal);
+    if (restored > 0) {
+      unit.hp += restored;
+      battle.log.push({ kind: "HEAL", targetId: unit.id, amount: restored });
+    }
+  }
+}
+
+/** SLOW 持ちユニットを後ろに回す stable sort（M3-B） */
+function orderBySlow(units: Unit[]): Unit[] {
+  return [...units].sort((a, b) => {
+    const aSlow = a.statuses.includes("SLOW") ? 1 : 0;
+    const bSlow = b.statuses.includes("SLOW") ? 1 : 0;
+    return aSlow - bSlow;
+  });
+}
+
 /** ターン開始時の DOT（POISON 等）を処理 */
 function applyTurnStartDot(battle: BattleState): void {
   for (const unit of [...battle.allies, ...battle.enemies]) {
@@ -207,7 +232,9 @@ function tickStatusDurations(battle: BattleState): void {
 
 /** 蘇生系など、死んだ対象を許容する行動か */
 function actionAllowsDeadTargets(action: Action): boolean {
-  return action.type === "CAST_REVIVE";
+  if (action.type === "CAST_REVIVE") return true;
+  if (action.type === "USE_ITEM" && action.itemId === "PHOENIX_DOWN") return true;
+  return false;
 }
 
 // ============================================================================

@@ -97,31 +97,10 @@ describe("runBattle - 行動の実効果", () => {
     expect(result.events.some((e) => e.kind === "HEAL" && e.targetId === "w")).toBe(true);
   });
 
-  it("まだ M3 で未実装の行動（SKILL(GUARD_BREAK)）は NOT_IMPLEMENTED で空振り", () => {
-    const allySet = makeGambitSet("a", [
-      makeRule(
-        "r1",
-        { type: "ENEMY_EXISTS" },
-        { type: "ENEMY_MATCH" },
-        { type: "SKILL", skillId: "GUARD_BREAK" },
-      ),
-    ]);
-    const ally = makeAlly("a", allySet, { hp: 100, hpMax: 100, mp: 50 });
-    const enemy = makeEnemy("e", emptyGambitSet("e"), { hp: 100 });
-
-    const result = runBattle([ally], [enemy], { maxTurns: 1 });
-
-    // 敵 HP は変わらない（実効果ゼロ）
-    expect(result.finalEnemies[0].hp).toBe(100);
-    // NOT_IMPLEMENTED イベントが記録されている
-    expect(
-      result.events.some(
-        (e) =>
-          e.kind === "NOT_IMPLEMENTED" &&
-          e.actionType.startsWith("SKILL(GUARD_BREAK)"),
-      ),
-    ).toBe(true);
-  });
+  // 注：M3-B 完了時点で 15 行動 + 31 コンテンツ ID すべて実装済みなので、
+  // 「未実装行動の空振り」テストは観測対象がなくなり削除した。
+  // 残る NOT_IMPLEMENTED 出力は CHAIN の特殊ケース（無対象時）のみで、
+  // それは「直前 ATTACK がないと CHAIN はフォールスルー」テストで確認している。
 });
 
 describe("runBattle - 戦闘終了判定", () => {
@@ -697,5 +676,449 @@ describe("runBattle - M3-A: INTERPOSE と予測される ALLY_TARGETED", () => {
     // ally の rule r1 が「ALLY_TARGETED」で発火 → DEFEND（-50%）
     // 通常ダメ 20 → DEFEND で 10 まで軽減（PROTECT なし）
     expect(result.finalAllies[0].hp).toBe(100 - 10);
+  });
+});
+
+// ============================================================================
+// M3-B: 残コンテンツ ID の実効果
+// ============================================================================
+
+describe("runBattle - M3-B: 回復魔法バリエーション", () => {
+  it("CURE vs CURA：mag x3 vs x5 で回復量が違う", () => {
+    const setCure = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ALLY_HP_LT", value: 50 },
+        { type: "ALLY_MATCH" },
+        { type: "CAST_HEAL", spellId: "CURE" },
+      ),
+    ]);
+    const setCura = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ALLY_HP_LT", value: 50 },
+        { type: "ALLY_MATCH" },
+        { type: "CAST_HEAL", spellId: "CURA" },
+      ),
+    ]);
+    const enemy = makeEnemy("e", emptyGambitSet("e"));
+
+    const healerCure = makeAlly("a", setCure, { mp: 100, mag: 10 });
+    const woundedA = makeAlly("w", emptyGambitSet("w"), { hp: 1, hpMax: 200 });
+    const r1 = runBattle([healerCure, woundedA], [enemy], { maxTurns: 1 });
+    const cureHp = r1.finalAllies.find((u) => u.id === "w")!.hp;
+
+    const healerCura = makeAlly("a", setCura, { mp: 100, mag: 10 });
+    const woundedB = makeAlly("w", emptyGambitSet("w"), { hp: 1, hpMax: 200 });
+    const r2 = runBattle([healerCura, woundedB], [enemy], { maxTurns: 1 });
+    const curaHp = r2.finalAllies.find((u) => u.id === "w")!.hp;
+
+    // CURE: 1 + (10*3) = 31, CURA: 1 + (10*5) = 51
+    expect(curaHp).toBeGreaterThan(cureHp);
+    expect(cureHp).toBe(1 + 30);
+    expect(curaHp).toBe(1 + 50);
+  });
+
+  it("CURE_ALL は ALLY_ALL 対象で全員回復する", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ALLY_ALL" },
+        { type: "CAST_HEAL", spellId: "CURE_ALL" },
+      ),
+    ]);
+    const healer = makeAlly("a", set, { mp: 100, mag: 10 });
+    const w1 = makeAlly("w1", emptyGambitSet("w1"), { hp: 50, hpMax: 200 });
+    const w2 = makeAlly("w2", emptyGambitSet("w2"), { hp: 100, hpMax: 200 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"));
+
+    const result = runBattle([healer, w1, w2], [enemy], { maxTurns: 1 });
+    // CURE_ALL: mag * 4 = 40 ヒール
+    expect(result.finalAllies.find((u) => u.id === "w1")!.hp).toBe(50 + 40);
+    expect(result.finalAllies.find((u) => u.id === "w2")!.hp).toBe(100 + 40);
+  });
+});
+
+describe("runBattle - M3-B: 攻撃魔法バリエーション", () => {
+  it("FIRE vs FIRA：単発威力の差", () => {
+    const setFire = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "CAST_OFFENSE", spellId: "FIRE" },
+      ),
+    ]);
+    const setFira = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "CAST_OFFENSE", spellId: "FIRA" },
+      ),
+    ]);
+    const mage1 = makeAlly("a", setFire, { mp: 100, mag: 10 });
+    const mage2 = makeAlly("a", setFira, { mp: 100, mag: 10 });
+    const enemy1 = makeEnemy("e", emptyGambitSet("e"), { hp: 1000, hpMax: 1000, def: 0 });
+    const enemy2 = makeEnemy("e", emptyGambitSet("e"), { hp: 1000, hpMax: 1000, def: 0 });
+
+    const r1 = runBattle([mage1], [enemy1], { maxTurns: 1 });
+    const r2 = runBattle([mage2], [enemy2], { maxTurns: 1 });
+
+    const fireDmg = 1000 - r1.finalEnemies[0].hp;
+    const firaDmg = 1000 - r2.finalEnemies[0].hp;
+    // FIRA は 1.5x
+    expect(firaDmg).toBeGreaterThan(fireDmg);
+  });
+
+  it("BLIZZARD は ICE 弱点の敵に 1.5x", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "CAST_OFFENSE", spellId: "BLIZZARD" },
+      ),
+    ]);
+    const mage = makeAlly("a", set, { mp: 100, mag: 10 });
+    const iceEnemy = makeEnemy("ice", emptyGambitSet("ice"), {
+      hp: 1000,
+      hpMax: 1000,
+      def: 0,
+      weaknesses: ["ICE"],
+    });
+    const normalEnemy = makeEnemy("nor", emptyGambitSet("nor"), {
+      hp: 1000,
+      hpMax: 1000,
+      def: 0,
+      weaknesses: [],
+    });
+
+    const r1 = runBattle([mage], [iceEnemy], { maxTurns: 1 });
+    const r2 = runBattle([mage], [normalEnemy], { maxTurns: 1 });
+
+    const iceDmg = 1000 - r1.finalEnemies[0].hp;
+    const normalDmg = 1000 - r2.finalEnemies[0].hp;
+    expect(iceDmg).toBeGreaterThan(normalDmg);
+  });
+});
+
+describe("runBattle - M3-B: バフ（SHELL/REGEN/HASTE）", () => {
+  it("CAST_BUFF(SHELL) は SHELL 状態を付与する", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "SELF" },
+        { type: "CAST_BUFF", buffId: "SHELL" },
+      ),
+    ]);
+    const caster = makeAlly("a", set, { mp: 50 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"));
+
+    const result = runBattle([caster], [enemy], { maxTurns: 1 });
+    expect(result.finalAllies[0].statuses).toContain("SHELL");
+  });
+
+  it("SHELL 状態の target への魔法は -25% ダメ", () => {
+    const setOffense = makeGambitSet("m", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "CAST_OFFENSE", spellId: "FIRE" },
+      ),
+    ]);
+    const mage = makeAlly("m", setOffense, { mp: 100, mag: 10 });
+    const normalEnemy = makeEnemy("e1", emptyGambitSet("e1"), {
+      hp: 1000,
+      hpMax: 1000,
+      def: 0,
+    });
+    const shelledEnemy = makeEnemy("e2", emptyGambitSet("e2"), {
+      hp: 1000,
+      hpMax: 1000,
+      def: 0,
+      statuses: ["SHELL"],
+      statusDurations: { SHELL: 3 },
+    });
+
+    const r1 = runBattle([mage], [normalEnemy], { maxTurns: 1 });
+    const r2 = runBattle([mage], [shelledEnemy], { maxTurns: 1 });
+    const normalDmg = 1000 - r1.finalEnemies[0].hp;
+    const shelledDmg = 1000 - r2.finalEnemies[0].hp;
+    expect(shelledDmg).toBe(Math.floor(normalDmg * 0.75));
+  });
+
+  it("REGEN は毎ターン HP 5% 回復する", () => {
+    const set = makeGambitSet("a", [
+      makeRule("r1", { type: "ENEMY_EXISTS" }, { type: "SELF" }, { type: "WAIT" }),
+    ]);
+    const regenAlly = makeAlly("a", set, {
+      hp: 100,
+      hpMax: 200, // 5% で 10 HP 回復
+      statuses: ["REGEN"],
+      statusDurations: { REGEN: 99 },
+    });
+    const enemy = makeEnemy("e", set);
+
+    const result = runBattle([regenAlly], [enemy], { maxTurns: 1 });
+    expect(result.finalAllies[0].hp).toBe(100 + 10);
+  });
+
+  it("HASTE は status flag のみで効果なし（M5 で ATB と連動予定）", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "SELF" },
+        { type: "CAST_BUFF", buffId: "HASTE" },
+      ),
+    ]);
+    const caster = makeAlly("a", set, { mp: 50 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"));
+
+    const result = runBattle([caster], [enemy], { maxTurns: 1 });
+    expect(result.finalAllies[0].statuses).toContain("HASTE");
+    // 攻撃順や速度に影響しないことを別途確認したいが、行動順テストは下の SLOW で代替
+  });
+});
+
+describe("runBattle - M3-B: デバフ（SILENCE/BLIND/SLOW）", () => {
+  it("SILENCE 状態の actor は CAST_* が canPerform=false → フォールスルー", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "CAST_OFFENSE", spellId: "FIRE" },
+      ),
+      makeRule(
+        "r2",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const silenced = makeAlly("a", set, {
+      mp: 100,
+      mag: 10,
+      atk: 20,
+      statuses: ["SILENCE"],
+      statusDurations: { SILENCE: 5 },
+    });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), { hp: 1000, hpMax: 1000, def: 0 });
+
+    const result = runBattle([silenced], [enemy], { maxTurns: 1 });
+    // SILENCE で r1 不可 → r2 で ATTACK → 物理 20 ダメ（mag 系の魔法ダメより少ない）
+    expect(1000 - result.finalEnemies[0].hp).toBe(20);
+  });
+
+  it("BLIND の actor は rng < 0.5 で miss（ダメ 0）", () => {
+    const set = makeGambitSet("a", [
+      makeRule("r1", { type: "ENEMY_EXISTS" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const blinded = makeAlly("a", set, {
+      atk: 20,
+      statuses: ["BLIND"],
+      statusDurations: { BLIND: 5 },
+    });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), { hp: 1000, hpMax: 1000, def: 0 });
+
+    // rng=0.0 → 必ず miss
+    const battle = makeBattle([blinded], [enemy], { rng: () => 0.0 });
+    applyActionDirectly(
+      { type: "ATTACK" },
+      { actor: blinded, targets: [enemy], battle, ruleId: "r1" },
+    );
+    expect(enemy.hp).toBe(1000); // miss、ダメージなし
+  });
+
+  it("BLIND の actor も rng >= 0.5 で hit（通常ダメ）", () => {
+    const set = makeGambitSet("a", [
+      makeRule("r1", { type: "ENEMY_EXISTS" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const blinded = makeAlly("a", set, {
+      atk: 20,
+      statuses: ["BLIND"],
+      statusDurations: { BLIND: 5 },
+    });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), { hp: 1000, hpMax: 1000, def: 0 });
+
+    // rng=0.9 → 必ず hit
+    const battle = makeBattle([blinded], [enemy], { rng: () => 0.9 });
+    applyActionDirectly(
+      { type: "ATTACK" },
+      { actor: blinded, targets: [enemy], battle, ruleId: "r1" },
+    );
+    expect(enemy.hp).toBe(1000 - 20);
+  });
+
+  it("BLIND でも rng 未注入なら必ず hit（後方互換）", () => {
+    const set = makeGambitSet("a", [
+      makeRule("r1", { type: "ENEMY_EXISTS" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const blinded = makeAlly("a", set, {
+      atk: 20,
+      statuses: ["BLIND"],
+      statusDurations: { BLIND: 5 },
+    });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), { hp: 1000, hpMax: 1000, def: 0 });
+
+    const result = runBattle([blinded], [enemy], { maxTurns: 1 });
+    // rng 未注入 → 常に hit、通常通り 20 ダメ
+    expect(1000 - result.finalEnemies[0].hp).toBe(20);
+  });
+
+  it("SLOW 状態のユニットは陣営内で行動順が末尾になる", () => {
+    // ally1 (SLOW) と ally2 (普通)、両方 r1 で ENEMY_LOWEST_HP を狙う
+    // 通常順なら ally1 が先 → ally1 のターゲットは初期最弱、ally2 が次に最弱を選ぶ
+    // SLOW 順なら ally2 が先 → ally2 のターゲットが初期最弱、ally1 は更新後の最弱を選ぶ
+    //
+    // → ally1, ally2 のターゲットが入れ替わるか、それともダメージ順が逆になるかで判定
+    const setAttack = makeGambitSet("a", [
+      makeRule("r1", { type: "ENEMY_LOWEST_HP" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const slowAlly = makeAlly("slow", setAttack, {
+      atk: 10,
+      statuses: ["SLOW"],
+      statusDurations: { SLOW: 5 },
+    });
+    const fastAlly = makeAlly("fast", setAttack, { atk: 10 });
+    // 同 HP の敵 2 体：先に行動するユニットの順序がそのままダメージ順に出る
+    const e1 = makeEnemy("e1", emptyGambitSet("e1"), { hp: 100, hpMax: 100, def: 0 });
+    const e2 = makeEnemy("e2", emptyGambitSet("e2"), { hp: 100, hpMax: 100, def: 0 });
+
+    const result = runBattle([slowAlly, fastAlly], [e1, e2], { maxTurns: 1 });
+
+    // 行動順は fast（slow なし） → slow（slow あり）
+    // ENEMY_LOWEST_HP で最初に殴られるのは配列先頭の e1（同 HP なら配列順）
+    // 1 体目（fast）が e1 を 10 ダメ、2 体目（slow）も e1 を狙う（まだ最弱）→ 90/100 にダメ
+    // 結果として e1 は 80 HP、e2 は 100 HP
+    const finalE1 = result.finalEnemies.find((u) => u.id === "e1")!;
+    const finalE2 = result.finalEnemies.find((u) => u.id === "e2")!;
+    expect(finalE1.hp).toBe(80);
+    expect(finalE2.hp).toBe(100);
+  });
+});
+
+describe("runBattle - M3-B: アイテム", () => {
+  it("HI_POTION は HP +80", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ALLY_HP_LT", value: 50 },
+        { type: "ALLY_MATCH" },
+        { type: "USE_ITEM", itemId: "HI_POTION" },
+      ),
+    ]);
+    const user = makeAlly("a", set, { inventory: { HI_POTION: 1 } });
+    const wounded = makeAlly("w", emptyGambitSet("w"), { hp: 10, hpMax: 200 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"));
+
+    const result = runBattle([user, wounded], [enemy], { maxTurns: 1 });
+    expect(result.finalAllies.find((u) => u.id === "w")!.hp).toBe(10 + 80);
+    expect(result.finalAllies.find((u) => u.id === "a")!.inventory.HI_POTION).toBe(0);
+  });
+
+  it("ETHER は MP +30", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ALLY_MP_LT", value: 50 },
+        { type: "ALLY_MATCH" },
+        { type: "USE_ITEM", itemId: "ETHER" },
+      ),
+    ]);
+    const user = makeAlly("a", set, { mp: 100, inventory: { ETHER: 1 } });
+    const lowMp = makeAlly("w", emptyGambitSet("w"), { mp: 5, mpMax: 100 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"));
+
+    const result = runBattle([user, lowMp], [enemy], { maxTurns: 1 });
+    expect(result.finalAllies.find((u) => u.id === "w")!.mp).toBe(5 + 30);
+  });
+
+  it("ANTIDOTE は POISON を解除する", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ALLY_HAS_STATUS", status: "POISON" },
+        { type: "ALLY_MATCH" },
+        { type: "USE_ITEM", itemId: "ANTIDOTE" },
+      ),
+    ]);
+    const user = makeAlly("a", set, { inventory: { ANTIDOTE: 1 } });
+    const poisoned = makeAlly("p", emptyGambitSet("p"), {
+      hp: 100,
+      hpMax: 100,
+      statuses: ["POISON"],
+      statusDurations: { POISON: 5 },
+    });
+    const enemy = makeEnemy("e", emptyGambitSet("e"));
+
+    const result = runBattle([user, poisoned], [enemy], { maxTurns: 1 });
+    expect(result.finalAllies.find((u) => u.id === "p")!.statuses).not.toContain("POISON");
+  });
+
+  it("PHOENIX_DOWN は戦闘不能の味方を 25% HP で復活", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ALLY_DEAD" },
+        { type: "ALLY_MATCH" },
+        { type: "USE_ITEM", itemId: "PHOENIX_DOWN" },
+      ),
+    ]);
+    const user = makeAlly("a", set, { inventory: { PHOENIX_DOWN: 1 } });
+    const fallen = makeAlly("f", emptyGambitSet("f"), {
+      hp: 0,
+      hpMax: 100,
+      isAlive: false,
+    });
+    const enemy = makeEnemy("e", emptyGambitSet("e"));
+
+    const result = runBattle([user, fallen], [enemy], { maxTurns: 1 });
+    const final = result.finalAllies.find((u) => u.id === "f")!;
+    expect(final.isAlive).toBe(true);
+    expect(final.hp).toBe(25);
+  });
+});
+
+describe("runBattle - M3-B: 剣士スキル", () => {
+  it("GUARD_BREAK は物理 1.3x", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "SKILL", skillId: "GUARD_BREAK" },
+      ),
+    ]);
+    const ally = makeAlly("a", set, { atk: 20, mp: 50 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), { hp: 1000, hpMax: 1000, def: 0 });
+
+    const result = runBattle([ally], [enemy], { maxTurns: 1 });
+    // 20 * 1.3 = 26
+    expect(1000 - result.finalEnemies[0].hp).toBe(26);
+  });
+
+  it("WHIRLWIND は ENEMY_ALL 対象に 0.8x で全体ヒット", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_ALL" },
+        { type: "SKILL", skillId: "WHIRLWIND" },
+      ),
+    ]);
+    const ally = makeAlly("a", set, { atk: 20, mp: 50 });
+    const e1 = makeEnemy("e1", emptyGambitSet("e1"), { hp: 1000, hpMax: 1000, def: 0 });
+    const e2 = makeEnemy("e2", emptyGambitSet("e2"), { hp: 1000, hpMax: 1000, def: 0 });
+
+    const result = runBattle([ally], [e1, e2], { maxTurns: 1 });
+    // 20 * 0.8 = 16 ダメージ x 2 体
+    expect(1000 - result.finalEnemies.find((u) => u.id === "e1")!.hp).toBe(16);
+    expect(1000 - result.finalEnemies.find((u) => u.id === "e2")!.hp).toBe(16);
   });
 });

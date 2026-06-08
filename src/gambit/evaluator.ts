@@ -280,5 +280,10 @@ function canPerform(action: Action, actor: Unit): boolean {
     return stock > 0;
   }
 
+  // M3-B: SILENCE 状態は魔法（CAST_*）を撃てない（SKILL/ATTACK/アイテム等は使える）
+  if (actor.statuses.includes("SILENCE") && action.type.startsWith("CAST_")) {
+    return false;
+  }
+
   return true;
 }

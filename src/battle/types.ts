@@ -98,6 +98,14 @@ export interface BattleState {
   provokeDurations: Map<string, number>;
   /** INTERPOSE: 守られている味方 ID → 守る味方 ID（単発、当ターンのみ） */
   interposingFor: Map<string, string>;
+
+  // --- M3-B 追加 ---
+  /**
+   * 確率判定用 RNG（0〜1）。
+   * 省略時は「常に成功」扱い（BLIND は当たる、センサーは見える）。
+   * テストで決定的な挙動が必要なときに固定値を返す関数を注入する。
+   */
+  rng?: () => number;
 }
 
 /** 戦闘ログの 1 イベント。後段の表示・テスト・リプレイで使う */

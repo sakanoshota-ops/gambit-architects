@@ -11,7 +11,7 @@
 // 列挙値（v1.0 で固定。追加は v1.1 以降）
 // ============================================================================
 
-/** 状態異常・バフ／デバフの統合タグ（DSL §3.5）*/
+/** 状態異常・バフ／デバフの統合タグ（DSL §3.5、M3-B で HASTE/SLOW 追加）*/
 export const STATUSES = [
   // 状態異常
   "POISON",
@@ -27,6 +27,9 @@ export const STATUSES = [
   "REGEN",
   "SHELL",
   "PROTECT",
+  "HASTE",
+  // デバフ（行動速度系）
+  "SLOW",
 ] as const;
 export type Status = (typeof STATUSES)[number];
 
