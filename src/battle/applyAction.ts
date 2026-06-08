@@ -43,6 +43,11 @@ const CURE_BASE_MULT = 3; // mag x 3 が回復量
 const PROTECT_DURATION = 4;
 const POISON_DURATION = 5;
 
+// -- M3-A バランス値（仮置き）--
+const CHARGE_MULTIPLIER = 1.5; // CHARGE 後の ATTACK
+const CHAIN_MULTIPLIER = 1.2; // CHAIN ボーナス
+const PROVOKE_DURATION = 3;
+
 export function applyAction(action: Action, ctx: ApplyContext): void {
   const { actor, targets, battle, ruleId } = ctx;
 
@@ -58,11 +63,18 @@ export function applyAction(action: Action, ctx: ApplyContext): void {
     // ------------------------------------------------------------------------
     // 物理攻撃
     // ------------------------------------------------------------------------
-    case "ATTACK":
+    case "ATTACK": {
+      // CHARGE 中の actor は次の ATTACK で 1.5x（消費する）
+      const charged = battle.chargedUnitIds.has(actor.id);
+      if (charged) battle.chargedUnitIds.delete(actor.id);
+      const mult = charged ? CHARGE_MULTIPLIER : 1.0;
       for (const target of targets) {
-        applyDamage(target, calculatePhysicalDamage(actor, target, battle, 1.0), battle);
+        applyDamage(target, calculatePhysicalDamage(actor, target, battle, mult), battle);
+        // CHAIN の対象解決に使われる：直近に殴られたユニット
+        battle.lastUnitAttackedThisTurn = target.id;
       }
       return;
+    }
 
     case "SKILL":
       if (action.skillId === "POWER_SLASH") {
@@ -188,17 +200,54 @@ export function applyAction(action: Action, ctx: ApplyContext): void {
       return;
 
     // ------------------------------------------------------------------------
-    // まだ M2 で実装していない行動
+    // M3-A：戦術行動
     // ------------------------------------------------------------------------
     case "CHARGE":
-    case "CHAIN":
+      // 次の ATTACK で 1.5x。当ターンは何もしない（フラグだけ立てる）
+      battle.chargedUnitIds.add(actor.id);
+      return;
+
+    case "CHAIN": {
+      // 同ターン直前に攻撃された "actor の敵側" のユニットを狙って +20% ダメ
+      const lastId = battle.lastUnitAttackedThisTurn;
+      if (!lastId) {
+        battle.log.push({
+          kind: "NOT_IMPLEMENTED",
+          actorId: actor.id,
+          actionType: "CHAIN(no chain target)",
+        });
+        return;
+      }
+      const opposingSide = actor.isAlly ? battle.enemies : battle.allies;
+      const target = opposingSide.find((u) => u.id === lastId && u.isAlive);
+      if (!target) {
+        battle.log.push({
+          kind: "NOT_IMPLEMENTED",
+          actorId: actor.id,
+          actionType: "CHAIN(target gone)",
+        });
+        return;
+      }
+      applyDamage(
+        target,
+        calculatePhysicalDamage(actor, target, battle, CHAIN_MULTIPLIER),
+        battle,
+      );
+      battle.lastUnitAttackedThisTurn = target.id;
+      return;
+    }
+
     case "PROVOKE":
+      // 自陣営の actor が PROVOKE 状態になる：敵 ATTACK を引き付ける
+      battle.provokeDurations.set(actor.id, PROVOKE_DURATION);
+      return;
+
     case "INTERPOSE":
-      battle.log.push({
-        kind: "NOT_IMPLEMENTED",
-        actorId: actor.id,
-        actionType: action.type,
-      });
+      // 対象（味方）への単体物理を 1 回肩代わり
+      for (const target of targets) {
+        if (target.id === actor.id) continue; // 自分への INTERPOSE は無効
+        battle.interposingFor.set(target.id, actor.id);
+      }
       return;
   }
 }

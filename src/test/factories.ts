@@ -102,6 +102,10 @@ export function makeBattle(
     log: [],
     targetedAllyIds: [],
     defendingThisTurn: new Set<string>(),
+    chargedUnitIds: new Set<string>(),
+    lastUnitAttackedThisTurn: null,
+    provokeDurations: new Map<string, number>(),
+    interposingFor: new Map<string, string>(),
     ...overrides,
   };
 }

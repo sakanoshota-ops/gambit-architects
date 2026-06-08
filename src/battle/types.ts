@@ -85,6 +85,19 @@ export interface BattleState {
   targetedAllyIds: string[];
   /** 当ターン DEFEND 状態のユニット ID 集合。ターン開始時にクリア */
   defendingThisTurn: Set<string>;
+
+  // --- M3-A 追加 ---
+  /** CHARGE 中のユニット ID 集合（次の ATTACK で 1.5x） */
+  chargedUnitIds: Set<string>;
+  /**
+   * 同ターン直前に攻撃を受けたユニット ID（CHAIN の対象解決に使用）。
+   * ターン開始時に null クリア
+   */
+  lastUnitAttackedThisTurn: string | null;
+  /** PROVOKE 中のユニット ID → 残りターン数（status duration と同じ tick 方式） */
+  provokeDurations: Map<string, number>;
+  /** INTERPOSE: 守られている味方 ID → 守る味方 ID（単発、当ターンのみ） */
+  interposingFor: Map<string, string>;
 }
 
 /** 戦闘ログの 1 イベント。後段の表示・テスト・リプレイで使う */

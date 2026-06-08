@@ -11,10 +11,12 @@
 
 import { describe, expect, it } from "vitest";
 
+import { applyAction as applyActionDirectly } from "../applyAction";
 import { runBattle } from "../runner";
 import {
   emptyGambitSet,
   makeAlly,
+  makeBattle,
   makeEnemy,
   makeGambitSet,
   makeRule,
@@ -95,27 +97,28 @@ describe("runBattle - 行動の実効果", () => {
     expect(result.events.some((e) => e.kind === "HEAL" && e.targetId === "w")).toBe(true);
   });
 
-  it("M2 で未実装の行動（CHARGE）は NOT_IMPLEMENTED イベントを残して空振り", () => {
+  it("まだ M3 で未実装の行動（SKILL(GUARD_BREAK)）は NOT_IMPLEMENTED で空振り", () => {
     const allySet = makeGambitSet("a", [
       makeRule(
         "r1",
         { type: "ENEMY_EXISTS" },
-        { type: "SELF" },
-        { type: "CHARGE" },
+        { type: "ENEMY_MATCH" },
+        { type: "SKILL", skillId: "GUARD_BREAK" },
       ),
     ]);
-    const ally = makeAlly("a", allySet, { hp: 100, hpMax: 100 });
+    const ally = makeAlly("a", allySet, { hp: 100, hpMax: 100, mp: 50 });
     const enemy = makeEnemy("e", emptyGambitSet("e"), { hp: 100 });
 
     const result = runBattle([ally], [enemy], { maxTurns: 1 });
 
-    // 敵 HP も自分 HP も変わらない（実効果ゼロ）
+    // 敵 HP は変わらない（実効果ゼロ）
     expect(result.finalEnemies[0].hp).toBe(100);
-    expect(result.finalAllies[0].hp).toBe(100);
     // NOT_IMPLEMENTED イベントが記録されている
     expect(
       result.events.some(
-        (e) => e.kind === "NOT_IMPLEMENTED" && e.actionType === "CHARGE",
+        (e) =>
+          e.kind === "NOT_IMPLEMENTED" &&
+          e.actionType.startsWith("SKILL(GUARD_BREAK)"),
       ),
     ).toBe(true);
   });
@@ -502,5 +505,197 @@ describe("runBattle - M2-A: 状態異常 PROTECT / POISON", () => {
     const finalPoisoned = result.finalAllies.find((u) => u.id === "p")!;
     expect(finalPoisoned.statuses).not.toContain("POISON");
     expect(finalPoisoned.statusDurations.POISON).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// M3-A: CHARGE / CHAIN / PROVOKE / INTERPOSE
+// ============================================================================
+
+describe("runBattle - M3-A: CHARGE", () => {
+  it("CHARGE → 次の ATTACK で 1.5x ダメージ、chargedUnitIds は消費される", () => {
+    // runner を経由せず、applyAction 直接で確認すると挙動が明確
+    const set = makeGambitSet("a", [
+      makeRule("r1", { type: "ENEMY_EXISTS" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const ally = makeAlly("a", set, { atk: 20 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), { hp: 1000, hpMax: 1000, def: 0 });
+    const battle = makeBattle([ally], [enemy]);
+
+    // CHARGE 直接適用
+    applyActionDirectly(
+      { type: "CHARGE" },
+      { actor: ally, targets: [ally], battle, ruleId: "r1" },
+    );
+    expect(battle.chargedUnitIds.has("a")).toBe(true);
+
+    // 続けて ATTACK
+    applyActionDirectly(
+      { type: "ATTACK" },
+      { actor: ally, targets: [enemy], battle, ruleId: "r2" },
+    );
+    // CHARGE 消費されている
+    expect(battle.chargedUnitIds.has("a")).toBe(false);
+    // ダメージは max(1, 20 - 0) * 1.5 = 30
+    expect(enemy.hp).toBe(1000 - 30);
+  });
+});
+
+describe("runBattle - M3-A: CHAIN", () => {
+  it("ALLY 同士の CHAIN：直前 ATTACK 対象に +20% ダメージ", () => {
+    const setAttack = makeGambitSet("a", [
+      makeRule("r1", { type: "ENEMY_EXISTS" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const setChain = makeGambitSet("a", [
+      makeRule("r1", { type: "ENEMY_EXISTS" }, { type: "SELF" }, { type: "CHAIN" }),
+    ]);
+    const attacker = makeAlly("a1", setAttack, { atk: 20 });
+    const chainer = makeAlly("a2", setChain, { atk: 20 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), { hp: 1000, hpMax: 1000, def: 0 });
+
+    const result = runBattle([attacker, chainer], [enemy], { maxTurns: 1 });
+    // Turn 1: a1 ATTACK (20 dmg) → lastUnitAttackedThisTurn=e
+    //         a2 CHAIN → 20 * 1.2 = 24 dmg
+    // 合計 44
+    expect(1000 - result.finalEnemies[0].hp).toBe(44);
+  });
+
+  it("直前 ATTACK がないと CHAIN はフォールスルー（NOT_IMPLEMENTED ログ）", () => {
+    const setChain = makeGambitSet("a", [
+      makeRule("r1", { type: "ENEMY_EXISTS" }, { type: "SELF" }, { type: "CHAIN" }),
+    ]);
+    const chainer = makeAlly("a", setChain, { atk: 20 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), { hp: 1000, hpMax: 1000, def: 0 });
+
+    const result = runBattle([chainer], [enemy], { maxTurns: 1 });
+    // CHAIN しか無く、直前 ATTACK が無いので 0 ダメ
+    expect(result.finalEnemies[0].hp).toBe(1000);
+    expect(
+      result.events.some(
+        (e) =>
+          e.kind === "NOT_IMPLEMENTED" &&
+          e.actionType.startsWith("CHAIN(no chain target)"),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("runBattle - M3-A: PROVOKE", () => {
+  it("PROVOKE 中の味方に敵 ATTACK がリダイレクトされる", () => {
+    const setProvoke = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "SELF_NO_STATUS", status: "POISON" },
+        { type: "SELF" },
+        { type: "PROVOKE" },
+      ),
+    ]);
+    const setEnemyAttack = makeGambitSet("e", [
+      // 通常なら ENEMY_LOWEST_HP（つまり HP 少ない味方）を狙うところを、
+      // PROVOKE で provoker にリダイレクトされるか
+      makeRule("r1", { type: "ENEMY_LOWEST_HP" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const provoker = makeAlly("tank", setProvoke, { hp: 200, hpMax: 200 });
+    // 弱い味方（普段ならこちらが狙われる）
+    const fragile = makeAlly("fragile", emptyGambitSet("fragile"), { hp: 10, hpMax: 10 });
+    const enemy = makeEnemy("e", setEnemyAttack, { atk: 20 });
+
+    // Turn 1: provoker が PROVOKE、enemy が fragile を狙う...が、リダイレクトで provoker に
+    const result = runBattle([provoker, fragile], [enemy], { maxTurns: 1 });
+
+    const finalProvoker = result.finalAllies.find((u) => u.id === "tank")!;
+    const finalFragile = result.finalAllies.find((u) => u.id === "fragile")!;
+    // 敵 ATTACK は provoker に行ったはず → fragile は無傷
+    expect(finalFragile.hp).toBe(10);
+    expect(finalProvoker.hp).toBeLessThan(200); // ダメージ受けている
+  });
+
+});
+
+describe("runBattle - M3-A: INTERPOSE と予測される ALLY_TARGETED", () => {
+  it("INTERPOSE で守られた味方への ATTACK は守り手にリダイレクトされる", () => {
+    // ally1: INTERPOSE ally2、ally2: 弱い、enemy: ally2 を狙う
+    const setInterpose = makeGambitSet("a1", [
+      makeRule(
+        "r1",
+        { type: "ALLY_TARGETED" },
+        { type: "ALLY_MATCH" },
+        { type: "INTERPOSE" },
+      ),
+      // フォールバック
+      makeRule("r2", { type: "ENEMY_EXISTS" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const setEnemyAttack = makeGambitSet("e", [
+      makeRule("r1", { type: "ENEMY_LOWEST_HP" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const guardian = makeAlly("a1", setInterpose, { hp: 200, hpMax: 200, atk: 1 });
+    const fragile = makeAlly("a2", emptyGambitSet("a2"), { hp: 10, hpMax: 10 });
+    const enemy = makeEnemy("e", setEnemyAttack, { atk: 5 });
+
+    const result = runBattle([guardian, fragile], [enemy], { maxTurns: 1 });
+
+    const finalGuardian = result.finalAllies.find((u) => u.id === "a1")!;
+    const finalFragile = result.finalAllies.find((u) => u.id === "a2")!;
+    // fragile は守られた → 無傷
+    expect(finalFragile.hp).toBe(10);
+    // guardian がダメージを引き受ける
+    expect(finalGuardian.hp).toBeLessThan(200);
+  });
+
+  it("INTERPOSE は単発：2 回連続の攻撃のうち 1 回目のみ守る", () => {
+    // enemy が 2 体、両方が ally2 を狙う
+    const setInterpose = makeGambitSet("a1", [
+      makeRule(
+        "r1",
+        { type: "ALLY_TARGETED" },
+        { type: "ALLY_MATCH" },
+        { type: "INTERPOSE" },
+      ),
+    ]);
+    const setEnemyAttack = makeGambitSet("e", [
+      makeRule("r1", { type: "ENEMY_LOWEST_HP" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const guardian = makeAlly("a1", setInterpose, { hp: 200, hpMax: 200, atk: 1 });
+    // fragile は ally2、HP 100 で 2 発耐えられる
+    const fragile = makeAlly("a2", emptyGambitSet("a2"), { hp: 100, hpMax: 100 });
+    const e1 = makeEnemy("e1", setEnemyAttack, { atk: 10 });
+    const e2 = makeEnemy("e2", setEnemyAttack, { atk: 10 });
+
+    const result = runBattle([guardian, fragile], [e1, e2], { maxTurns: 1 });
+
+    const finalGuardian = result.finalAllies.find((u) => u.id === "a1")!;
+    const finalFragile = result.finalAllies.find((u) => u.id === "a2")!;
+    // guardian は 1 回ぶん肩代わり、fragile も 1 回受ける
+    expect(finalGuardian.hp).toBeLessThan(200);
+    expect(finalFragile.hp).toBeLessThan(100);
+  });
+
+  it("predictTargetedAllies により ALLY_TARGETED 条件が同ターンに反応する", () => {
+    // ally が ALLY_TARGETED を条件にする → 通常なら未来情報が必要
+    // 実装：ターン開始時に predict してから ally action フェーズに入る
+    const setSelfDefendIfTargeted = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ALLY_TARGETED" },
+        { type: "SELF" },
+        { type: "DEFEND" },
+      ),
+      makeRule("r2", { type: "ENEMY_EXISTS" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const setEnemyAttack = makeGambitSet("e", [
+      makeRule("r1", { type: "ENEMY_EXISTS" }, { type: "ENEMY_MATCH" }, { type: "ATTACK" }),
+    ]);
+    const ally = makeAlly("a", setSelfDefendIfTargeted, {
+      hp: 100,
+      hpMax: 100,
+      atk: 5,
+      def: 0, // 通常ダメ計算をシンプルに（20 - 0 = 20）
+    });
+    const enemy = makeEnemy("e", setEnemyAttack, { atk: 20 });
+
+    const result = runBattle([ally], [enemy], { maxTurns: 1 });
+    // ally の rule r1 が「ALLY_TARGETED」で発火 → DEFEND（-50%）
+    // 通常ダメ 20 → DEFEND で 10 まで軽減（PROTECT なし）
+    expect(result.finalAllies[0].hp).toBe(100 - 10);
   });
 });

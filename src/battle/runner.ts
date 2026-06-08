@@ -56,19 +56,26 @@ export function runBattle(
     log: [],
     targetedAllyIds: [],
     defendingThisTurn: new Set<string>(),
+    chargedUnitIds: new Set<string>(),
+    lastUnitAttackedThisTurn: null,
+    provokeDurations: new Map<string, number>(),
+    interposingFor: new Map<string, string>(),
   };
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     battle.turn = turn;
     battle.log.push({ kind: "TURN_START", turn });
     battle.defendingThisTurn.clear();
+    battle.lastUnitAttackedThisTurn = null;
+    battle.interposingFor.clear(); // INTERPOSE は単発（当ターンのみ）
 
     // ターン開始時の処理：
     //   ① DOT（POISON など）を適用
     //   ② 状態異常の残ターン数を 1 減らし、0 で除去
-    // 「付与したターンには tick せず、次のターン開始時から減る」のセマンティクス
+    //   ③ PROVOKE の残ターン tick
     applyTurnStartDot(battle);
     tickStatusDurations(battle);
+    tickProvokeDurations(battle);
 
     // DOT で決着がついていないか確認
     const dotStatus = checkBattleEnd(battle);
@@ -76,6 +83,10 @@ export function runBattle(
       battle.log.push({ kind: "BATTLE_END", winner: dotStatus });
       return finalize(battle, dotStatus, turn);
     }
+
+    // ターン開始時の予測：敵の決定をシミュレートして targetedAllyIds に反映
+    // → INTERPOSE/ALLY_TARGETED 系のガンビットが正しく機能するため
+    battle.targetedAllyIds = predictTargetedAllies(battle);
 
     // 行動順：味方 → 敵（M1 はこの単純順）
     const turnOrder: Unit[] = [...battle.allies, ...battle.enemies];
@@ -87,10 +98,13 @@ export function runBattle(
       const decision = decideAction(actor, battle);
       if (!decision) continue; // 何もできない → 待機相当
 
+      // M3-A：ATTACK の場合は PROVOKE / INTERPOSE のリダイレクトを順に適用
+      const redirected = applyRedirects(decision, actor, battle, unitsById);
+
       // 対象を解決して、生存している対象のみに絞る
       // ただし蘇生系（CAST_REVIVE）は死者を対象にする必要があるので例外
-      const allowsDeadTargets = actionAllowsDeadTargets(decision.action);
-      const validTargets = decision.targetIds
+      const allowsDeadTargets = actionAllowsDeadTargets(redirected.action);
+      const validTargets = redirected.targetIds
         .map((id) => unitsById.get(id))
         .filter((u): u is Unit => u !== undefined && (allowsDeadTargets || u.isAlive));
 
@@ -99,11 +113,11 @@ export function runBattle(
         continue;
       }
 
-      applyAction(decision.action, {
+      applyAction(redirected.action, {
         actor,
         targets: validTargets,
         battle,
-        ruleId: decision.ruleId,
+        ruleId: redirected.ruleId,
       });
 
       // 行動の途中でも勝敗判定
@@ -194,4 +208,75 @@ function tickStatusDurations(battle: BattleState): void {
 /** 蘇生系など、死んだ対象を許容する行動か */
 function actionAllowsDeadTargets(action: Action): boolean {
   return action.type === "CAST_REVIVE";
+}
+
+// ============================================================================
+// M3-A：PROVOKE / INTERPOSE / 予測
+// ============================================================================
+
+/** PROVOKE 残ターンを 1 減らし、0 で除去 */
+function tickProvokeDurations(battle: BattleState): void {
+  const ids = Array.from(battle.provokeDurations.keys());
+  for (const id of ids) {
+    const remaining = (battle.provokeDurations.get(id) ?? 0) - 1;
+    if (remaining <= 0) battle.provokeDurations.delete(id);
+    else battle.provokeDurations.set(id, remaining);
+  }
+}
+
+/**
+ * 敵の決定を事前にシミュレートして、ATTACK 対象になりそうな味方の ID を返す。
+ * 副作用なし（state を変えない）。INTERPOSE / ALLY_TARGETED 条件の事前情報源。
+ */
+function predictTargetedAllies(battle: BattleState): string[] {
+  const targeted = new Set<string>();
+  // 味方陣営から狙われる候補のみを対象（敵 → 味方）
+  for (const enemy of battle.enemies) {
+    if (!enemy.isAlive) continue;
+    const decision = decideAction(enemy, battle);
+    if (!decision) continue;
+    if (decision.action.type !== "ATTACK") continue;
+    for (const tid of decision.targetIds) {
+      const target = battle.allies.find((u) => u.id === tid);
+      if (target?.isAlive) targeted.add(tid);
+    }
+  }
+  return Array.from(targeted);
+}
+
+/**
+ * ATTACK のリダイレクト：
+ *   1. PROVOKE：actor の敵陣営に PROVOKE 中の味方がいたら、その味方を狙う
+ *   2. INTERPOSE：その後の対象が誰かに守られていたら、守り手にリダイレクト（単発）
+ */
+function applyRedirects(
+  decision: import("../gambit/evaluator").ActionDecision,
+  actor: Unit,
+  battle: BattleState,
+  unitsById: Map<string, Unit>,
+): import("../gambit/evaluator").ActionDecision {
+  if (decision.action.type !== "ATTACK") return decision;
+
+  let targetIds = [...decision.targetIds];
+
+  // 1. PROVOKE：actor から見た「敵」のうち、PROVOKE 中で生存している者がいれば、そこに統一
+  const opposing = actor.isAlly ? battle.enemies : battle.allies;
+  const provoker = opposing.find(
+    (u) => battle.provokeDurations.has(u.id) && u.isAlive,
+  );
+  if (provoker) {
+    targetIds = [provoker.id];
+  }
+
+  // 2. INTERPOSE：対象が守られていたら守り手にリダイレクトし、interposingFor から削除（単発）
+  targetIds = targetIds.map((tid) => {
+    const protectorId = battle.interposingFor.get(tid);
+    if (!protectorId) return tid;
+    const protector = unitsById.get(protectorId);
+    if (!protector?.isAlive) return tid;
+    battle.interposingFor.delete(tid);
+    return protectorId;
+  });
+
+  return { ...decision, targetIds };
 }
