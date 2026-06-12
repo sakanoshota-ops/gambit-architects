@@ -31,7 +31,7 @@ function makePartyOf4(): PlayerData["party"] {
 }
 
 function makeInitialData(): PlayerData {
-  const settings: Settings = { battleSpeed: 2 };
+  const settings: Settings = { battleSpeed: 2, locale: "ja" };
   return {
     party: makePartyOf4(),
     dungeon: { currentDepth: 1, maxDepth: 1, recentBattles: [] },
@@ -183,7 +183,8 @@ describe("GambitEditorScreen の保存／取り消し", () => {
     fireEvent.click(screen.getAllByRole("checkbox")[0]);
     expect(screen.getAllByRole("checkbox")[0]).not.toBeChecked();
 
-    fireEvent.click(screen.getByRole("button", { name: "取り消し" }));
+    // M3-G-8: 取り消しボタンは i18n 化で「キャンセル」に統一
+    fireEvent.click(screen.getByRole("button", { name: "キャンセル" }));
     expect(screen.getAllByRole("checkbox")[0]).toBeChecked();
     expect(screen.queryByText(/未保存の変更あり/)).not.toBeInTheDocument();
   });

@@ -1122,3 +1122,419 @@ describe("runBattle - M3-B: 剣士スキル", () => {
     expect(1000 - result.finalEnemies.find((u) => u.id === "e2")!.hp).toBe(16);
   });
 });
+
+// ============================================================================
+// M3-E: センサーシステム
+// ============================================================================
+
+describe("runBattle - M3-E: センサーシステム", () => {
+  it("HP_SCANNER 装備で ENEMY_LOWEST_HP は rng=0 でも 100% 動作", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_LOWEST_HP" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const ally = makeAlly("a", set, {
+      atk: 20,
+      equipment: { sensor: "HP_SCANNER" },
+    });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), {
+      hp: 100,
+      hpMax: 100,
+      def: 0,
+    });
+
+    // rng=0 はセンサー無しなら失敗するが、HP_SCANNER 装備で 100% 成功
+    const result = runBattle([ally], [enemy], { maxTurns: 1, rng: () => 0.0 });
+    expect(result.finalEnemies[0].hp).toBe(80); // 20 ダメ入る
+  });
+
+  it("センサー無しで rng < 0.5 だと ENEMY_LOWEST_HP は失敗 → フォールスルー", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_LOWEST_HP" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+      makeRule("r2", { type: "ENEMY_EXISTS" }, { type: "SELF" }, { type: "DEFEND" }),
+    ]);
+    const ally = makeAlly("a", set, { atk: 20 }); // センサー無し
+    const enemy = makeEnemy("e", emptyGambitSet("e"), {
+      hp: 100,
+      hpMax: 100,
+      def: 0,
+    });
+
+    // rng=0 → r1 のセンサーチェック失敗 → r2 DEFEND
+    const result = runBattle([ally], [enemy], { maxTurns: 1, rng: () => 0.0 });
+    expect(result.finalEnemies[0].hp).toBe(100); // ATTACK されてない
+  });
+
+  it("センサー無しで rng >= 0.5 だと ENEMY_LOWEST_HP は成功", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_LOWEST_HP" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const ally = makeAlly("a", set, { atk: 20 }); // センサー無し
+    const enemy = makeEnemy("e", emptyGambitSet("e"), {
+      hp: 100,
+      hpMax: 100,
+      def: 0,
+    });
+
+    const result = runBattle([ally], [enemy], { maxTurns: 1, rng: () => 0.9 });
+    expect(result.finalEnemies[0].hp).toBe(80);
+  });
+
+  it("STATUS_DETECTOR 装備で ENEMY_HAS_STATUS は 100% 動作", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_HAS_STATUS", status: "POISON" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const ally = makeAlly("a", set, {
+      atk: 20,
+      equipment: { sensor: "STATUS_DETECTOR" },
+    });
+    const poisonedEnemy = makeEnemy("e", emptyGambitSet("e"), {
+      hp: 100,
+      hpMax: 100,
+      def: 0,
+      statuses: ["POISON"],
+      statusDurations: { POISON: 3 },
+    });
+
+    const result = runBattle([ally], [poisonedEnemy], {
+      maxTurns: 1,
+      rng: () => 0.0,
+    });
+    // POISON の自然減ダメージは事前に入ってる（hpMax の 8% = 8）が、
+    // ATTACK の 20 ダメが追加されていれば OK
+    expect(result.finalEnemies[0].hp).toBeLessThan(92);
+  });
+
+  it("ELEMENT_ANALYZER 装備で ENEMY_WEAK_TO は 100% 動作", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_WEAK_TO", element: "FIRE" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const ally = makeAlly("a", set, {
+      atk: 20,
+      equipment: { sensor: "ELEMENT_ANALYZER" },
+    });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), {
+      hp: 100,
+      hpMax: 100,
+      def: 0,
+      weaknesses: ["FIRE"],
+    });
+
+    const result = runBattle([ally], [enemy], { maxTurns: 1, rng: () => 0.0 });
+    expect(result.finalEnemies[0].hp).toBe(80);
+  });
+
+  it("BASIC_SCANNER は HP と STATUS の両方をカバー", () => {
+    const setHp = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_LOWEST_HP" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const setStatus = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_HAS_STATUS", status: "POISON" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const ally1 = makeAlly("a", setHp, {
+      atk: 20,
+      equipment: { sensor: "BASIC_SCANNER" },
+    });
+    const ally2 = makeAlly("a", setStatus, {
+      atk: 20,
+      equipment: { sensor: "BASIC_SCANNER" },
+    });
+    const enemy1 = makeEnemy("e", emptyGambitSet("e"), {
+      hp: 100,
+      hpMax: 100,
+      def: 0,
+    });
+    const enemy2 = makeEnemy("e", emptyGambitSet("e"), {
+      hp: 100,
+      hpMax: 100,
+      def: 0,
+      statuses: ["POISON"],
+      statusDurations: { POISON: 3 },
+    });
+
+    // 両方とも rng=0 でも BASIC_SCANNER で 100%
+    const r1 = runBattle([ally1], [enemy1], { maxTurns: 1, rng: () => 0.0 });
+    const r2 = runBattle([ally2], [enemy2], { maxTurns: 1, rng: () => 0.0 });
+    expect(r1.finalEnemies[0].hp).toBe(80);
+    expect(r2.finalEnemies[0].hp).toBeLessThan(92); // POISON 8 + ATTACK 20
+  });
+
+  it("SELF_HP_LT はセンサーゲートされない（rng 関係なく動作）", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "SELF_HP_LT", value: 99 },
+        { type: "SELF" },
+        { type: "DEFEND" },
+      ),
+      makeRule("r2", { type: "ENEMY_EXISTS" }, { type: "SELF" }, { type: "WAIT" }),
+    ]);
+    const ally = makeAlly("a", set, { hp: 50, hpMax: 100 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"));
+
+    // rng=0 でも r1 が発火（センサー対象外）
+    const result = runBattle([ally], [enemy], { maxTurns: 1, rng: () => 0.0 });
+    expect(
+      result.events.some(
+        (e) => e.kind === "ACTION" && e.actionType === "DEFEND",
+      ),
+    ).toBe(true);
+  });
+
+  it("ENEMY_EXISTS はセンサーゲートされない（rng 関係なく動作）", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const ally = makeAlly("a", set, { atk: 20 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), {
+      hp: 100,
+      hpMax: 100,
+      def: 0,
+    });
+
+    const result = runBattle([ally], [enemy], { maxTurns: 1, rng: () => 0.0 });
+    expect(result.finalEnemies[0].hp).toBe(80);
+  });
+
+  it("rng 未注入なら sensor-gated 条件もすべて成功（既存テストの後方互換）", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_LOWEST_HP" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const ally = makeAlly("a", set, { atk: 20 }); // センサー無し
+    const enemy = makeEnemy("e", emptyGambitSet("e"), {
+      hp: 100,
+      hpMax: 100,
+      def: 0,
+    });
+
+    // rng 注入なし → 常に成功
+    const result = runBattle([ally], [enemy], { maxTurns: 1 });
+    expect(result.finalEnemies[0].hp).toBe(80);
+  });
+});
+
+// ============================================================================
+// M3-F: 耐性システム（resistances）
+// ============================================================================
+
+describe("runBattle - M3-F: 物理耐性（NEUTRAL）", () => {
+  it("NEUTRAL 耐性ありの敵への ATTACK は 0.5x ダメージ", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const ally = makeAlly("a", set, { atk: 30 });
+    const resistantEnemy = makeEnemy("res", emptyGambitSet("res"), {
+      hp: 200,
+      hpMax: 200,
+      def: 10,
+      resistances: ["NEUTRAL"],
+    });
+    const normalEnemy = makeEnemy("nor", emptyGambitSet("nor"), {
+      hp: 200,
+      hpMax: 200,
+      def: 10,
+    });
+
+    const resR = runBattle([ally], [resistantEnemy], { maxTurns: 1 });
+    const norR = runBattle([ally], [normalEnemy], { maxTurns: 1 });
+
+    const resDmg = 200 - resR.finalEnemies[0].hp;
+    const norDmg = 200 - norR.finalEnemies[0].hp;
+    // 通常 (30-10)=20、耐性 floor(20*0.5)=10
+    expect(norDmg).toBe(20);
+    expect(resDmg).toBe(10);
+  });
+
+  it("NEUTRAL 耐性なしの敵には耐性が効かない（回帰）", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "ATTACK" },
+      ),
+    ]);
+    const ally = makeAlly("a", set, { atk: 30 });
+    const enemy = makeEnemy("e", emptyGambitSet("e"), {
+      hp: 100,
+      hpMax: 100,
+      def: 10,
+      resistances: ["FIRE"], // 物理は素通し
+    });
+
+    const r = runBattle([ally], [enemy], { maxTurns: 1 });
+    // (30-10)=20 ダメ、FIRE 耐性は物理に影響しない
+    expect(100 - r.finalEnemies[0].hp).toBe(20);
+  });
+});
+
+describe("runBattle - M3-F: 魔法属性耐性", () => {
+  it("FIRE 耐性ありの敵への CAST_OFFENSE(FIRE) は 0.5x ダメージ", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "CAST_OFFENSE", spellId: "FIRE" },
+      ),
+    ]);
+    const mage = makeAlly("a", set, { mp: 50, mag: 20 });
+    const fireResEnemy = makeEnemy("fr", emptyGambitSet("fr"), {
+      hp: 300,
+      hpMax: 300,
+      def: 10,
+      resistances: ["FIRE"],
+    });
+    const normalEnemy = makeEnemy("nor", emptyGambitSet("nor"), {
+      hp: 300,
+      hpMax: 300,
+      def: 10,
+    });
+
+    const resR = runBattle([mage], [fireResEnemy], { maxTurns: 1 });
+    const norR = runBattle([mage], [normalEnemy], { maxTurns: 1 });
+    const resDmg = 300 - resR.finalEnemies[0].hp;
+    const norDmg = 300 - norR.finalEnemies[0].hp;
+
+    // base = 20*2-10 = 30、FIRE 1.0x → 30、耐性で floor(30*0.5)=15
+    expect(norDmg).toBe(30);
+    expect(resDmg).toBe(15);
+  });
+
+  it("弱点 + 耐性は両方乗る（1.5x * 0.5x = 0.75x）", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "CAST_OFFENSE", spellId: "FIRE" },
+      ),
+    ]);
+    const mage = makeAlly("a", set, { mp: 50, mag: 20 });
+    const dualEnemy = makeEnemy("dual", emptyGambitSet("dual"), {
+      hp: 300,
+      hpMax: 300,
+      def: 10,
+      weaknesses: ["FIRE"],
+      resistances: ["FIRE"],
+    });
+
+    const r = runBattle([mage], [dualEnemy], { maxTurns: 1 });
+    const dmg = 300 - r.finalEnemies[0].hp;
+    // base 30 → 弱点 floor(30*1.5)=45 → 耐性 floor(45*0.5)=22
+    expect(dmg).toBe(22);
+  });
+
+  it("SHELL + 耐性も両方乗る（0.5x * 0.75x = 0.375x）", () => {
+    const set = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "CAST_OFFENSE", spellId: "FIRE" },
+      ),
+    ]);
+    const mage = makeAlly("a", set, { mp: 50, mag: 20 });
+    const shellResEnemy = makeEnemy("sr", emptyGambitSet("sr"), {
+      hp: 300,
+      hpMax: 300,
+      def: 10,
+      resistances: ["FIRE"],
+      statuses: ["SHELL"],
+      statusDurations: { SHELL: 4 },
+    });
+
+    const r = runBattle([mage], [shellResEnemy], { maxTurns: 1 });
+    const dmg = 300 - r.finalEnemies[0].hp;
+    // base 30 → 耐性 floor(30*0.5)=15 → SHELL floor(15*0.75)=11
+    expect(dmg).toBe(11);
+  });
+
+  it("DARK 耐性ありの敵への DARK_BOLT は 0.5x、FIRE 攻撃には素通し", () => {
+    const setDark = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "CAST_OFFENSE", spellId: "DARK_BOLT" },
+      ),
+    ]);
+    const setFire = makeGambitSet("a", [
+      makeRule(
+        "r1",
+        { type: "ENEMY_EXISTS" },
+        { type: "ENEMY_MATCH" },
+        { type: "CAST_OFFENSE", spellId: "FIRE" },
+      ),
+    ]);
+    const mage1 = makeAlly("a", setDark, { mp: 50, mag: 20 });
+    const mage2 = makeAlly("a", setFire, { mp: 50, mag: 20 });
+    const darkResEnemy1 = makeEnemy("dr", emptyGambitSet("dr"), {
+      hp: 300,
+      hpMax: 300,
+      def: 10,
+      resistances: ["DARK"],
+    });
+    const darkResEnemy2 = makeEnemy("dr", emptyGambitSet("dr"), {
+      hp: 300,
+      hpMax: 300,
+      def: 10,
+      resistances: ["DARK"],
+    });
+
+    const rDark = runBattle([mage1], [darkResEnemy1], { maxTurns: 1 });
+    const rFire = runBattle([mage2], [darkResEnemy2], { maxTurns: 1 });
+    // base 30、DARK は耐性で 0.5x → 15、FIRE は素通り → 30
+    expect(300 - rDark.finalEnemies[0].hp).toBe(15);
+    expect(300 - rFire.finalEnemies[0].hp).toBe(30);
+  });
+});

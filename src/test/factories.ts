@@ -63,6 +63,7 @@ export function makeUnit(overrides: UnitOverrides): Unit {
     isAlly: overrides.isAlly,
     isAlive: true,
     weaknesses: [],
+    resistances: [],
     enemyType: overrides.isAlly ? "HUMANOID" : "BEAST",
     isBoss: false,
     gambitSet: overrides.gambitSet,

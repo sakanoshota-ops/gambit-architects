@@ -1,10 +1,15 @@
 import { useState } from "react";
 
 import { decodeGambitSet, encodeGambitSet } from "../../gambit/sharing";
+import { localizedJobName } from "../../i18n/names";
+import { useT, useLocale } from "../../i18n/useT";
 import { usePlayer } from "../../state/PlayerContext";
 
 export function SettingsScreen() {
   const { data, dispatch } = usePlayer();
+  const t = useT();
+  const { locale, setLocale } = useLocale();
+  const ja = locale === "ja";
   const [selectedId, setSelectedId] = useState(data.party[0]?.id ?? "");
   const [exportText, setExportText] = useState("");
   const [importText, setImportText] = useState("");
@@ -22,9 +27,17 @@ export function SettingsScreen() {
       setExportText(encoded);
       try {
         await navigator.clipboard.writeText(encoded);
-        setMessage({ kind: "ok", text: "クリップボードにコピーしました" });
+        setMessage({
+          kind: "ok",
+          text: ja ? "クリップボードにコピーしました" : "Copied to clipboard",
+        });
       } catch {
-        setMessage({ kind: "ok", text: "下のテキストを手動でコピーしてください" });
+        setMessage({
+          kind: "ok",
+          text: ja
+            ? "下のテキストを手動でコピーしてください"
+            : "Please copy the text below manually",
+        });
       }
     } finally {
       setBusy(false);
@@ -40,7 +53,12 @@ export function SettingsScreen() {
     try {
       const decoded = await decodeGambitSet(trimmed);
       if (!decoded) {
-        setMessage({ kind: "ng", text: "不正な共有文字列です（GA2: から始まる文字列を貼り付けてください）" });
+        setMessage({
+          kind: "ng",
+          text: ja
+            ? "不正な共有文字列です（GA2: から始まる文字列を貼り付けてください）"
+            : "Invalid share string (paste a GA2:... string)",
+        });
         return;
       }
       // characterId を選択キャラに合わせて上書き（A 案）
@@ -51,7 +69,12 @@ export function SettingsScreen() {
         gambitSet: adjusted,
       });
       setImportText("");
-      setMessage({ kind: "ok", text: `${selected.name} に適用しました（${adjusted.rules.length} ルール）` });
+      setMessage({
+        kind: "ok",
+        text: ja
+          ? `${selected.name} に適用しました（${adjusted.rules.length} ルール）`
+          : `Applied to ${selected.name} (${adjusted.rules.length} rules)`,
+      });
     } finally {
       setBusy(false);
     }
@@ -59,11 +82,37 @@ export function SettingsScreen() {
 
   return (
     <section className="space-y-6">
-      <h2 className="text-2xl font-bold">設定</h2>
+      <h2 className="text-2xl font-bold">{t("nav.settings")}</h2>
+
+      {/* 言語 */}
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-slate-700">
+          {t("settings.language")}
+        </p>
+        <div className="flex gap-2">
+          {(["ja", "en"] as const).map((loc) => (
+            <button
+              key={loc}
+              type="button"
+              onClick={() => setLocale(loc)}
+              className={
+                "border rounded px-3 py-1 text-sm " +
+                (locale === loc
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100")
+              }
+            >
+              {t(`settings.${loc}`)}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* 倍速 */}
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-slate-700">戦闘倍速</p>
+      <div className="space-y-2 border-t border-slate-200 pt-4">
+        <p className="text-sm font-medium text-slate-700">
+          {ja ? "戦闘倍速" : "Battle Speed"}
+        </p>
         <div className="flex gap-2">
           {([1, 2, 4] as const).map((s) => (
             <button
@@ -85,10 +134,12 @@ export function SettingsScreen() {
 
       {/* ガンビット共有 */}
       <div className="space-y-3 border-t border-slate-200 pt-4">
-        <p className="text-sm font-medium text-slate-700">ガンビット共有</p>
+        <p className="text-sm font-medium text-slate-700">
+          {ja ? "ガンビット共有" : "Gambit Share"}
+        </p>
 
         <label className="flex items-center gap-2 text-sm">
-          <span>対象キャラ：</span>
+          <span>{ja ? "対象キャラ：" : "Character:"}</span>
           <select
             value={selectedId}
             onChange={(e) => {
@@ -100,21 +151,21 @@ export function SettingsScreen() {
           >
             {data.party.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name} ({u.jobId})
+                {u.name} ({localizedJobName(u.jobId, locale)})
               </option>
             ))}
           </select>
         </label>
 
         <div className="space-y-1">
-          <p className="text-xs text-slate-500">エクスポート</p>
+          <p className="text-xs text-slate-500">{ja ? "エクスポート" : "Export"}</p>
           <button
             type="button"
             onClick={handleExport}
             disabled={busy || !selected}
             className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100 disabled:opacity-50"
           >
-            コピー
+            {ja ? "コピー" : "Copy"}
           </button>
           {exportText && (
             <textarea
@@ -123,20 +174,20 @@ export function SettingsScreen() {
               rows={3}
               className="w-full mt-1 border border-slate-300 rounded p-2 text-xs font-mono break-all bg-slate-50"
               onFocus={(e) => e.currentTarget.select()}
-              aria-label="エクスポート結果"
+              aria-label={ja ? "エクスポート結果" : "Export result"}
             />
           )}
         </div>
 
         <div className="space-y-1">
-          <p className="text-xs text-slate-500">インポート</p>
+          <p className="text-xs text-slate-500">{ja ? "インポート" : "Import"}</p>
           <textarea
             value={importText}
             onChange={(e) => setImportText(e.target.value)}
             placeholder="GA2:..."
             rows={3}
             className="w-full border border-slate-300 rounded p-2 text-xs font-mono"
-            aria-label="インポート用文字列"
+            aria-label={ja ? "インポート用文字列" : "Import string"}
           />
           <button
             type="button"
@@ -144,7 +195,7 @@ export function SettingsScreen() {
             disabled={busy || !importText.trim() || !selected}
             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-slate-300"
           >
-            適用
+            {ja ? "適用" : "Apply"}
           </button>
         </div>
 
@@ -162,11 +213,16 @@ export function SettingsScreen() {
 
       {/* 初期化 */}
       <div className="space-y-2 border-t border-slate-200 pt-4">
-        <p className="text-sm font-medium text-slate-700">セーブデータ</p>
+        <p className="text-sm font-medium text-slate-700">
+          {ja ? "セーブデータ" : "Save Data"}
+        </p>
         <button
           type="button"
           onClick={() => {
-            if (confirm("セーブデータを初期化しますか？")) {
+            const msg = ja
+              ? "セーブデータを初期化しますか？"
+              : "Reset save data?";
+            if (confirm(msg)) {
               dispatch({ type: "RESET_TO_DEFAULTS" });
               setExportText("");
               setImportText("");
@@ -175,7 +231,7 @@ export function SettingsScreen() {
           }}
           className="border border-rose-300 text-rose-600 rounded px-3 py-1 text-sm hover:bg-rose-50"
         >
-          セーブデータを初期化
+          {ja ? "セーブデータを初期化" : "Reset Save Data"}
         </button>
       </div>
     </section>

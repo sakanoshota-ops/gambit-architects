@@ -24,7 +24,7 @@ function makeData(recentBattles: LastBattleRecord[] = []): PlayerData {
       createSwordsman("a4", "Sword4", presetTank("a4")),
     ],
     dungeon: { currentDepth: 1, maxDepth: 1, recentBattles },
-    settings: { battleSpeed: 2 },
+    settings: { battleSpeed: 2, locale: "ja" },
   };
 }
 

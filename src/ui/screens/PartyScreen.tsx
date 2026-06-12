@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { ARMORS, SENSORS, WEAPONS } from "../../data/equipment";
+import {
+  localizedArmor,
+  localizedJobName,
+  localizedSensor,
+  localizedWeapon,
+} from "../../i18n/names";
+import { useT, useLocale } from "../../i18n/useT";
 import { usePlayer } from "../../state/PlayerContext";
 import { EquipmentPicker } from "../components/EquipmentPicker";
 
 export function PartyScreen() {
   const { data, dispatch } = usePlayer();
+  const t = useT();
+  const { locale } = useLocale();
   const [equippingId, setEquippingId] = useState<string | null>(null);
 
   const editingUnit = equippingId
@@ -15,19 +23,19 @@ export function PartyScreen() {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-2xl font-bold">編成</h2>
+      <h2 className="text-2xl font-bold">{t("party.title")}</h2>
 
       <ul className="space-y-2">
         {data.party.map((u) => {
           const weaponName = u.equipment.weapon
-            ? WEAPONS[u.equipment.weapon].displayName
-            : "なし";
+            ? localizedWeapon(u.equipment.weapon, locale)
+            : t("common.none");
           const armorName = u.equipment.armor
-            ? ARMORS[u.equipment.armor].displayName
-            : "なし";
+            ? localizedArmor(u.equipment.armor, locale)
+            : t("common.none");
           const sensorName = u.equipment.sensor
-            ? SENSORS[u.equipment.sensor].displayName
-            : "なし";
+            ? localizedSensor(u.equipment.sensor, locale)
+            : t("common.none");
 
           return (
             <li
@@ -37,7 +45,10 @@ export function PartyScreen() {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold">
-                    {u.name} <span className="text-xs text-slate-500">({u.jobId})</span>
+                    {u.name}{" "}
+                    <span className="text-xs text-slate-500">
+                      ({localizedJobName(u.jobId, locale)})
+                    </span>
                   </div>
                   <div className="text-sm text-slate-600 mt-0.5">
                     HP {u.hp}/{u.hpMax} ・ MP {u.mp}/{u.mpMax}
@@ -48,28 +59,26 @@ export function PartyScreen() {
                     to={`/edit/${u.id}`}
                     className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100 active:bg-slate-200 transition-colors"
                   >
-                    編集
+                    {t("common.edit")}
                   </Link>
                   <button
                     type="button"
                     onClick={() => setEquippingId(u.id)}
                     className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100 active:bg-slate-200 transition-colors"
                   >
-                    装備
+                    {t("party.equipment")}
                   </button>
                 </div>
               </div>
               <div className="text-xs text-slate-500 grid grid-cols-3 gap-1">
-                <span>武器: {weaponName}</span>
-                <span>防具: {armorName}</span>
-                <span>センサー: {sensorName}</span>
+                <span>{t("party.weapon")}: {weaponName}</span>
+                <span>{t("party.armor")}: {armorName}</span>
+                <span>{t("party.sensor")}: {sensorName}</span>
               </div>
             </li>
           );
         })}
       </ul>
-
-      <p className="text-xs text-slate-400">（M4 でドロップ要素を導入予定。M3 は全装備が選択可）</p>
 
       {editingUnit && (
         <EquipmentPicker

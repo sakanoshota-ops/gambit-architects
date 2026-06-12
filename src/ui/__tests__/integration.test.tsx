@@ -30,7 +30,7 @@ import { SettingsScreen } from "../screens/SettingsScreen";
 import { Layout } from "../layout/Layout";
 
 function makeInitialData(): PlayerData {
-  const settings: Settings = { battleSpeed: 4 };
+  const settings: Settings = { battleSpeed: 4, locale: "ja" };
   return {
     party: [
       createSwordsman("ally_1", "Sword1", presetFinisher("ally_1")),
@@ -91,8 +91,8 @@ describe("E2E：ホーム → 戦闘 → ホーム", () => {
     expect(screen.getByRole("heading", { name: "ホーム" })).toBeInTheDocument();
     // 「現在の深度: 2」のような表示
     expect(screen.getByText(/出撃（深度\s*2\s*）/)).toBeInTheDocument();
-    // 直近戦闘の勝者（ALLY）が表示される
-    expect(screen.getByText(/ALLY/)).toBeInTheDocument();
+    // 直近戦闘の勝者（M3-G-8 で「ALLY」→ ローカライズ済み「勝利」表示）
+    expect(screen.getByText("勝利")).toBeInTheDocument();
   });
 });
 

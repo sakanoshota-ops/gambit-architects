@@ -7,6 +7,7 @@
 
 import { createSwordsman } from "../data/jobs";
 import { presetTank } from "../gambit/presets";
+import { DEFAULT_LOCALE } from "../i18n/strings";
 import type { PlayerData } from "./PlayerContext";
 
 export function createDefaultPlayerData(): PlayerData {
@@ -25,6 +26,7 @@ export function createDefaultPlayerData(): PlayerData {
     },
     settings: {
       battleSpeed: 2,
+      locale: DEFAULT_LOCALE,
     },
   };
 }

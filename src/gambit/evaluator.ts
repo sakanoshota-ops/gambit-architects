@@ -231,27 +231,33 @@ function evaluateCondition(
       return matched ? { matched: true, matchedUnit: matched } : { matched: false };
     }
     case "ENEMY_LOWEST_HP": {
+      if (!senseCheck("ENEMY_LOWEST_HP", actor, battle)) return { matched: false };
       // HP 実数最低（DSL §3.2）
       const matched = pickBy(aliveEnemies, (u) => u.hp, false);
       return matched ? { matched: true, matchedUnit: matched } : { matched: false };
     }
     case "ENEMY_HIGHEST_HP": {
+      if (!senseCheck("ENEMY_HIGHEST_HP", actor, battle)) return { matched: false };
       const matched = pickBy(aliveEnemies, (u) => u.hp, true);
       return matched ? { matched: true, matchedUnit: matched } : { matched: false };
     }
     case "ENEMY_HAS_STATUS": {
+      if (!senseCheck("ENEMY_HAS_STATUS", actor, battle)) return { matched: false };
       const matched = aliveEnemies.find((u) => u.statuses.includes(condition.status));
       return matched ? { matched: true, matchedUnit: matched } : { matched: false };
     }
     case "ENEMY_NO_STATUS": {
+      if (!senseCheck("ENEMY_NO_STATUS", actor, battle)) return { matched: false };
       const matched = aliveEnemies.find((u) => !u.statuses.includes(condition.status));
       return matched ? { matched: true, matchedUnit: matched } : { matched: false };
     }
     case "ENEMY_WEAK_TO": {
+      if (!senseCheck("ENEMY_WEAK_TO", actor, battle)) return { matched: false };
       const matched = aliveEnemies.find((u) => u.weaknesses.includes(condition.element));
       return matched ? { matched: true, matchedUnit: matched } : { matched: false };
     }
     case "ENEMY_TYPE": {
+      if (!senseCheck("ENEMY_TYPE", actor, battle)) return { matched: false };
       const matched = aliveEnemies.find((u) => u.enemyType === condition.enemyType);
       return matched ? { matched: true, matchedUnit: matched } : { matched: false };
     }

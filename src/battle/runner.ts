@@ -37,6 +37,12 @@ export interface BattleResult {
 export interface RunBattleOptions {
   /** 最大ターン数。デフォルト 50。これを超えると TIMEOUT */
   maxTurns?: number;
+  /**
+   * 確率判定 RNG（BLIND 命中・センサーゲート判定で使用）。
+   * 省略時は battle.rng が undefined のままで「常に成功」扱い（既存テスト互換）。
+   * 本番では BattleScreen 側で Math.random を注入。
+   */
+  rng?: () => number;
 }
 
 const DEFAULT_MAX_TURNS = 50;
@@ -60,6 +66,7 @@ export function runBattle(
     lastUnitAttackedThisTurn: null,
     provokeDurations: new Map<string, number>(),
     interposingFor: new Map<string, string>(),
+    rng: options.rng,
   };
 
   for (let turn = 1; turn <= maxTurns; turn++) {

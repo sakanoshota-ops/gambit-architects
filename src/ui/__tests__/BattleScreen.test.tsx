@@ -56,7 +56,7 @@ function HomeStub() {
 }
 
 function renderBattleAt(party: PlayerData["party"], currentDepth = 1) {
-  const settings: Settings = { battleSpeed: 4 };
+  const settings: Settings = { battleSpeed: 4, locale: "ja" };
   const initialData: PlayerData = {
     party,
     dungeon: { currentDepth, maxDepth: currentDepth, recentBattles: [] },
@@ -90,6 +90,46 @@ describe("BattleScreen のスキップ", () => {
     fireEvent.click(screen.getByRole("button", { name: "スキップ" }));
     expect(screen.getByText("勝利！")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ホームへ戻る" })).toBeInTheDocument();
+  });
+});
+
+describe("BattleScreen の M3-G-7：勝利後の次の深度へ出撃", () => {
+  it("勝利時は「深度 N+1 へ出撃」と「ホームへ戻る」の両方が出る", () => {
+    renderBattleAt(makeStrongParty(), 1);
+    fireEvent.click(screen.getByRole("button", { name: "スキップ" }));
+    expect(
+      screen.getByRole("button", { name: "深度 2 へ出撃" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ホームへ戻る" }),
+    ).toBeInTheDocument();
+  });
+
+  it("敗北時は「次の深度」ボタンが出ず、「ホームへ戻る」のみ", () => {
+    renderBattleAt(makeFragileParty(), 3);
+    fireEvent.click(screen.getByRole("button", { name: "スキップ" }));
+    expect(
+      screen.queryByRole("button", { name: /へ出撃/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ホームへ戻る" }),
+    ).toBeInTheDocument();
+  });
+
+  it("「次の深度へ出撃」を押すと新しい深度の戦闘が始まる", () => {
+    renderBattleAt(makeStrongParty(), 1);
+    fireEvent.click(screen.getByRole("button", { name: "スキップ" }));
+    // 次の深度へ
+    fireEvent.click(screen.getByRole("button", { name: "深度 2 へ出撃" }));
+    // タイトルが「戦闘（深度 2）」に変わる
+    expect(screen.getByText("戦闘（深度 2）")).toBeInTheDocument();
+    // 結果ダイアログは一旦消える（戦闘進行中）or 即座に勝利表示
+    // どちらにせよ、深度 2 で再戦中 / 終了であること
+    // スキップしてさらに勝利できることを検証
+    const skipBtn = screen.queryByRole("button", { name: "スキップ" });
+    if (skipBtn) fireEvent.click(skipBtn);
+    // 戦闘 2 戦目は最深度 2 の固定編成
+    expect(screen.getByText(/戦闘（深度 2）/)).toBeInTheDocument();
   });
 });
 

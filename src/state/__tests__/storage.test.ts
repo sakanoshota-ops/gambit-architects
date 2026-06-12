@@ -94,4 +94,61 @@ describe("loadPlayerData マイグレーション", () => {
       expect(u.statusDurations).toEqual({});
     }
   });
+
+  it("M3-F: 旧形式で Unit.resistances が無いユニットは [] で補完される", () => {
+    const data = createDefaultPlayerData();
+    const rawOld = JSON.parse(JSON.stringify(data));
+    for (const u of rawOld.party) {
+      delete u.resistances;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rawOld));
+
+    const loaded = loadPlayerData();
+    expect(loaded).not.toBeNull();
+    for (const u of loaded!.party) {
+      expect(Array.isArray(u.resistances)).toBe(true);
+      expect(u.resistances).toEqual([]);
+    }
+  });
+
+  it("M3-F: 既存セーブで resistances が既に存在する場合は上書きしない", () => {
+    const data = createDefaultPlayerData();
+    const rawOld = JSON.parse(JSON.stringify(data));
+    // 1 体目に DARK 耐性を入れた状態でセーブ
+    rawOld.party[0].resistances = ["DARK"];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rawOld));
+
+    const loaded = loadPlayerData();
+    expect(loaded!.party[0].resistances).toEqual(["DARK"]);
+  });
+
+  it("M3-G-8: 旧形式で settings.locale が無い場合は ja を補完", () => {
+    const data = createDefaultPlayerData();
+    const rawOld = JSON.parse(JSON.stringify(data));
+    delete rawOld.settings.locale;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rawOld));
+
+    const loaded = loadPlayerData();
+    expect(loaded!.settings.locale).toBe("ja");
+  });
+
+  it("M3-G-8: 不正な locale 値（zh など）は ja にフォールバック", () => {
+    const data = createDefaultPlayerData();
+    const rawOld = JSON.parse(JSON.stringify(data));
+    rawOld.settings.locale = "zh";
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rawOld));
+
+    const loaded = loadPlayerData();
+    expect(loaded!.settings.locale).toBe("ja");
+  });
+
+  it("M3-G-8: 有効な locale 値（en）はそのまま保持", () => {
+    const data = createDefaultPlayerData();
+    const rawOld = JSON.parse(JSON.stringify(data));
+    rawOld.settings.locale = "en";
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rawOld));
+
+    const loaded = loadPlayerData();
+    expect(loaded!.settings.locale).toBe("en");
+  });
 });

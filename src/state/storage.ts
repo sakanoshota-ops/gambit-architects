@@ -22,6 +22,13 @@ export function loadPlayerData(): PlayerData | null {
     if (!parsed.dungeon || typeof parsed.dungeon.currentDepth !== "number") return null;
     if (!parsed.settings) return null;
 
+    // M3-G-8 マイグレーション：locale が無い古いセーブは "ja" を補う
+    if (typeof parsed.settings.locale !== "string") {
+      parsed.settings.locale = "ja";
+    } else if (parsed.settings.locale !== "ja" && parsed.settings.locale !== "en") {
+      parsed.settings.locale = "ja";
+    }
+
     // M2-H マイグレーション：lastBattle → recentBattles
     if (!Array.isArray(parsed.dungeon.recentBattles)) {
       if (parsed.dungeon.lastBattle) {
@@ -33,6 +40,7 @@ export function loadPlayerData(): PlayerData | null {
     }
 
     // M3-C マイグレーション：Unit.equipment が無いユニットに空オブジェクトを補う
+    // M3-F マイグレーション：Unit.resistances が無いユニットに空配列を補う
     for (const u of parsed.party) {
       if (!u || typeof u !== "object") continue;
       const unit = u as Record<string, unknown>;
@@ -42,6 +50,10 @@ export function loadPlayerData(): PlayerData | null {
       // M3-A 関連の statusDurations が無い場合の保険
       if (!unit.statusDurations || typeof unit.statusDurations !== "object") {
         unit.statusDurations = {};
+      }
+      // M3-F: resistances 既定 []
+      if (!Array.isArray(unit.resistances)) {
+        unit.resistances = [];
       }
     }
 

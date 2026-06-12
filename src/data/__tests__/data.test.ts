@@ -22,10 +22,23 @@ import {
   ALL_ENEMIES,
   BANDIT,
   createEnemy,
+  DARK_DRAGON,
+  DARK_KNIGHT,
+  DEMON_LORD,
+  DEMON_LORD_MINION,
   GOBLIN,
   GOBLIN_KING,
   GOLEM,
+  HARPY,
+  IMP,
+  LICH,
+  NECROMANCER,
+  ORC,
+  PHANTOM,
   SKELETON,
+  SLIME,
+  TROLL,
+  TURTLE,
   WOLF,
   type EnemyTemplate,
 } from "../enemies";
@@ -237,10 +250,121 @@ describe("data: M2-B 追加敵（SKELETON / GOLEM / GOBLIN_KING）", () => {
     expect(decideAction(ally, battleBoss)!.ruleId).toBe("r1");
   });
 
-  it("ALL_ENEMIES に 6 種すべてが入っている", () => {
-    expect(Object.keys(ALL_ENEMIES).sort()).toEqual(
-      ["BANDIT", "GOBLIN", "GOBLIN_KING", "GOLEM", "SKELETON", "WOLF"].sort(),
-    );
+  it("ALL_ENEMIES に M2 までの 6 種が含まれる", () => {
+    const keys = Object.keys(ALL_ENEMIES);
+    for (const id of ["BANDIT", "GOBLIN", "GOBLIN_KING", "GOLEM", "SKELETON", "WOLF"]) {
+      expect(keys).toContain(id);
+    }
+  });
+});
+
+// ============================================================================
+// Phase M3-F: 新敵テンプレ 10 種 + ボス 3 種、resistances 導入
+// ============================================================================
+
+describe("data: M3-F 新通常敵テンプレ", () => {
+  const newEnemies: Array<[string, EnemyTemplate, string, string[]]> = [
+    ["ORC", ORC, "HUMANOID", ["ICE"]],
+    ["IMP", IMP, "MAGICAL", ["HOLY"]],
+    ["LICH", LICH, "UNDEAD", ["HOLY"]],
+    ["TROLL", TROLL, "BEAST", ["FIRE"]],
+    ["DARK_KNIGHT", DARK_KNIGHT, "HUMANOID", ["HOLY"]],
+    ["TURTLE", TURTLE, "BEAST", ["THUNDER"]],
+    ["SLIME", SLIME, "BEAST", ["FIRE"]],
+    ["PHANTOM", PHANTOM, "UNDEAD", ["HOLY"]],
+    ["HARPY", HARPY, "BEAST", ["THUNDER"]],
+    ["DEMON_LORD_MINION", DEMON_LORD_MINION, "MAGICAL", ["HOLY"]],
+  ];
+
+  it.each(newEnemies)(
+    "%s は enemyType=%s で弱点 %s を持つ",
+    (_name, tmpl, expectedType, expectedWeaknesses) => {
+      expect(tmpl.enemyType).toBe(expectedType);
+      for (const w of expectedWeaknesses) {
+        expect(tmpl.weaknesses).toContain(w);
+      }
+      expect(tmpl.isBoss ?? false).toBe(false);
+      expect(tmpl.hp).toBeGreaterThan(0);
+      expect(tmpl.atk).toBeGreaterThanOrEqual(0);
+    },
+  );
+
+  it("IMP は FIRE 耐性を持つ", () => {
+    expect(IMP.resistances).toContain("FIRE");
+  });
+
+  it("LICH/DARK_KNIGHT/PHANTOM/DEMON_LORD_MINION は DARK 耐性を持つ", () => {
+    for (const tmpl of [LICH, DARK_KNIGHT, PHANTOM, DEMON_LORD_MINION]) {
+      expect(tmpl.resistances).toContain("DARK");
+    }
+  });
+
+  it("TURTLE/SLIME/PHANTOM は物理半減（NEUTRAL 耐性）", () => {
+    for (const tmpl of [TURTLE, SLIME, PHANTOM]) {
+      expect(tmpl.resistances).toContain("NEUTRAL");
+    }
+  });
+
+  it("耐性なしの敵（ORC/TROLL/HARPY）は resistances 未定義または空", () => {
+    for (const tmpl of [ORC, TROLL, HARPY]) {
+      expect((tmpl.resistances ?? []).length).toBe(0);
+    }
+  });
+
+  it("createEnemy は resistances をテンプレと共有しない", () => {
+    const set = presetTank("p1");
+    const p1 = createEnemy(PHANTOM, "p1", set);
+    p1.resistances.push("FIRE");
+    const p2 = createEnemy(PHANTOM, "p2", set);
+    expect(p2.resistances).toEqual(["NEUTRAL", "DARK"]);
+  });
+});
+
+describe("data: M3-F ボス +3 種", () => {
+  it("DARK_DRAGON はボス、HOLY 弱点、DARK 耐性、深度 10 想定の HP", () => {
+    expect(DARK_DRAGON.isBoss).toBe(true);
+    expect(DARK_DRAGON.enemyType).toBe("BOSS");
+    expect(DARK_DRAGON.weaknesses).toContain("HOLY");
+    expect(DARK_DRAGON.resistances).toContain("DARK");
+    expect(DARK_DRAGON.hp).toBeGreaterThan(GOBLIN_KING.hp);
+  });
+
+  it("NECROMANCER は HOLY 弱点・DARK 耐性、魔法寄り（mag が atk より高い）", () => {
+    expect(NECROMANCER.isBoss).toBe(true);
+    expect(NECROMANCER.weaknesses).toContain("HOLY");
+    expect(NECROMANCER.resistances).toContain("DARK");
+    expect(NECROMANCER.mag).toBeGreaterThan(NECROMANCER.atk);
+  });
+
+  it("DEMON_LORD は HOLY 弱点、DARK+NEUTRAL 耐性、最強 HP（>= 1500）", () => {
+    expect(DEMON_LORD.isBoss).toBe(true);
+    expect(DEMON_LORD.weaknesses).toContain("HOLY");
+    expect(DEMON_LORD.resistances).toContain("DARK");
+    expect(DEMON_LORD.resistances).toContain("NEUTRAL");
+    expect(DEMON_LORD.hp).toBeGreaterThanOrEqual(1500);
+  });
+
+  it("ALL_ENEMIES に M3-F の 13 種が追加されている（合計 19）", () => {
+    const m3fIds = [
+      "ORC",
+      "IMP",
+      "LICH",
+      "TROLL",
+      "DARK_KNIGHT",
+      "TURTLE",
+      "SLIME",
+      "PHANTOM",
+      "HARPY",
+      "DEMON_LORD_MINION",
+      "DARK_DRAGON",
+      "NECROMANCER",
+      "DEMON_LORD",
+    ];
+    const keys = Object.keys(ALL_ENEMIES);
+    for (const id of m3fIds) {
+      expect(keys).toContain(id);
+    }
+    expect(keys.length).toBe(19);
   });
 });
 

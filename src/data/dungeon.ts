@@ -17,10 +17,23 @@ import type { Unit } from "../battle/types";
 import {
   BANDIT,
   createEnemy,
+  DARK_DRAGON,
+  DARK_KNIGHT,
+  DEMON_LORD,
+  DEMON_LORD_MINION,
   GOBLIN,
   GOBLIN_KING,
   GOLEM,
+  HARPY,
+  IMP,
+  LICH,
+  NECROMANCER,
+  ORC,
+  PHANTOM,
   SKELETON,
+  SLIME,
+  TROLL,
+  TURTLE,
   WOLF,
   type EnemyTemplate,
 } from "./enemies";
@@ -61,20 +74,50 @@ const FIXED_MAX_DEPTH = 5;
 // procgen（深度 6 以降）
 // ============================================================================
 
-type Tier = "weak" | "medium" | "strong";
+type Tier = "weak" | "medium" | "strong" | "strong-plus";
 
+/**
+ * M3-F: tier 拡張
+ * - weak (深度 6〜7)：GOBLIN/WOLF/SLIME（初級）
+ * - medium (8〜12)：WOLF/BANDIT/SKELETON/ORC/HARPY
+ * - strong (13〜17)：BANDIT/SKELETON/GOLEM/ORC/TROLL/IMP/PHANTOM
+ * - strong-plus (18+)：GOLEM/TROLL/DARK_KNIGHT/LICH/TURTLE/DEMON_LORD_MINION
+ *
+ * 各 tier の HP/atk 帯がオーバーラップしすぎないよう敵を分配。
+ */
 const TIER_POOL: Record<Tier, EnemyTemplate[]> = {
-  weak: [GOBLIN, WOLF],
-  medium: [WOLF, BANDIT, SKELETON],
-  strong: [BANDIT, SKELETON, GOLEM],
+  weak: [GOBLIN, WOLF, SLIME],
+  medium: [WOLF, BANDIT, SKELETON, ORC, HARPY],
+  strong: [BANDIT, SKELETON, GOLEM, ORC, TROLL, IMP, PHANTOM],
+  "strong-plus": [GOLEM, TROLL, DARK_KNIGHT, LICH, TURTLE, DEMON_LORD_MINION],
 };
 
-const BOSS_POOL: EnemyTemplate[] = [GOBLIN_KING];
+/**
+ * M3-F: 深度別ボスプール
+ * - 5:  GOBLIN_KING（チュートリアル後初ボス）
+ * - 10: DARK_DRAGON
+ * - 15: NECROMANCER
+ * - 20+: DEMON_LORD（v1.0 想定のラスボス、超深度でもループ）
+ */
+const BOSS_POOL_BY_DEPTH: Record<number, EnemyTemplate[]> = {
+  5: [GOBLIN_KING],
+  10: [DARK_DRAGON],
+  15: [NECROMANCER],
+  20: [DEMON_LORD],
+};
+
+function bossPoolForDepth(depth: number): EnemyTemplate[] {
+  const exact = BOSS_POOL_BY_DEPTH[depth];
+  if (exact) return exact;
+  // 25 以降は最後のスケジュール（20 の魔王）を再利用
+  return BOSS_POOL_BY_DEPTH[20];
+}
 
 function tierForDepth(depth: number): Tier {
   if (depth <= 7) return "weak";
   if (depth <= 12) return "medium";
-  return "strong";
+  if (depth <= 17) return "strong";
+  return "strong-plus";
 }
 
 function isBossDepth(depth: number): boolean {
@@ -104,9 +147,17 @@ function generateProcgenForDepth(depth: number): EnemyTemplate[] {
   const rng = makeRng(depth);
 
   if (isBossDepth(depth)) {
-    const boss = pickFromPool(BOSS_POOL, rng);
-    const support = pickFromPool(TIER_POOL[tierForDepth(depth)], rng);
-    return [boss, support];
+    const boss = pickFromPool(bossPoolForDepth(depth), rng);
+    const tierPool = TIER_POOL[tierForDepth(depth)];
+    // M3-F: ボス階のミニオン同行数を深度で増やす
+    //   - 深度 5:  ミニオン 1（既存挙動を維持）
+    //   - 深度 10: ミニオン 1〜2
+    //   - 深度 15+: ミニオン 2
+    const minionCount = depth <= 5 ? 1 : depth <= 10 ? 1 + Math.floor(rng() * 2) : 2;
+    const minions = Array.from({ length: minionCount }, () =>
+      pickFromPool(tierPool, rng),
+    );
+    return [boss, ...minions];
   }
 
   const pool = TIER_POOL[tierForDepth(depth)];

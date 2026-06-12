@@ -12,6 +12,7 @@
 import { useState } from "react";
 
 import type { JobId } from "../../battle/types";
+import { useT, useLocale } from "../../i18n/useT";
 import {
   BUFF_IDS,
   CONDITION_TYPES,
@@ -51,6 +52,8 @@ interface RulePickerProps {
 }
 
 export function RulePicker({ open, jobId, initialRule, onSave, onCancel }: RulePickerProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [condition, setCondition] = useState<Condition>(
     initialRule?.condition ?? defaultCondition(),
@@ -91,15 +94,20 @@ export function RulePicker({ open, jobId, initialRule, onSave, onCancel }: RuleP
       aria-labelledby="picker-title"
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+      {/*
+        M3-D 修正の再発防止：max-h-[90vh] + overflow-auto を子に持たせると
+        Chromium の native <select> popup がモーダル境界でクリップされ、
+        2 回目以降ドロップダウンが開かなくなる。EquipmentPicker と同じ対応で両方とも外す。
+      */}
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full flex flex-col">
         <header className="border-b border-slate-200 px-5 py-3 flex items-center justify-between">
           <h3 id="picker-title" className="font-semibold">
-            {initialRule ? "ルール編集" : "ルール追加"}
+            {initialRule ? t("gambit.ruleEdit") : t("gambit.ruleAdd")}
           </h3>
           <StepTabs current={step} onChange={(s) => setStep(s)} />
         </header>
 
-        <div className="flex-1 overflow-auto p-5 space-y-3">
+        <div className="flex-1 p-5 space-y-3">
           {step === 1 && (
             <ConditionStep condition={condition} onChange={setCondition} />
           )}
@@ -117,7 +125,7 @@ export function RulePicker({ open, jobId, initialRule, onSave, onCancel }: RuleP
             onClick={onCancel}
             className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100"
           >
-            キャンセル
+            {t("common.cancel")}
           </button>
           <div className="flex gap-2">
             {step > 1 && (
@@ -126,7 +134,7 @@ export function RulePicker({ open, jobId, initialRule, onSave, onCancel }: RuleP
                 onClick={() => setStep((s) => (s - 1) as 1 | 2 | 3)}
                 className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100"
               >
-                戻る
+                {t("common.back")}
               </button>
             )}
             {step === 1 && (
@@ -135,7 +143,7 @@ export function RulePicker({ open, jobId, initialRule, onSave, onCancel }: RuleP
                 onClick={goToStep2}
                 className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                次へ（対象）
+                {t("gambit.nextToTarget")}
               </button>
             )}
             {step === 2 && (
@@ -144,7 +152,7 @@ export function RulePicker({ open, jobId, initialRule, onSave, onCancel }: RuleP
                 onClick={goToStep3}
                 className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                次へ（行動）
+                {t("gambit.nextToAction")}
               </button>
             )}
             {step === 3 && (
@@ -153,7 +161,7 @@ export function RulePicker({ open, jobId, initialRule, onSave, onCancel }: RuleP
                 onClick={handleSave}
                 className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                保存
+                {t("common.save")}
               </button>
             )}
           </div>
@@ -174,10 +182,11 @@ function StepTabs({
   current: 1 | 2 | 3;
   onChange: (step: 1 | 2 | 3) => void;
 }) {
+  const t = useT();
   const tabs: Array<{ step: 1 | 2 | 3; label: string }> = [
-    { step: 1, label: "条件" },
-    { step: 2, label: "対象" },
-    { step: 3, label: "行動" },
+    { step: 1, label: t("gambit.stepCondition") },
+    { step: 2, label: t("gambit.stepTarget") },
+    { step: 3, label: t("gambit.stepAction") },
   ];
   return (
     <div className="flex gap-1 text-xs">
@@ -211,13 +220,12 @@ function ConditionStep({
   condition: Condition;
   onChange: (c: Condition) => void;
 }) {
+  const { locale } = useLocale();
   const grouped = groupBy(CONDITION_TYPES, (t) => getConditionCategory(t as ConditionType));
-  const labels: Record<string, string> = {
-    self: "自身",
-    ally: "味方",
-    enemy: "敵",
-    battle: "戦況",
-  };
+  const labels: Record<string, string> =
+    locale === "ja"
+      ? { self: "自身", ally: "味方", enemy: "敵", battle: "戦況" }
+      : { self: "Self", ally: "Ally", enemy: "Enemy", battle: "Battle" };
 
   return (
     <div className="space-y-4">
@@ -254,7 +262,7 @@ function ConditionStep({
       )}
       {needsStatusParam(condition.type) && "status" in condition && (
         <EnumSelector
-          label="状態"
+          label={locale === "ja" ? "状態" : "Status"}
           options={STATUSES}
           value={condition.status}
           onChange={(s) => onChange({ ...condition, status: s } as Condition)}
@@ -262,7 +270,7 @@ function ConditionStep({
       )}
       {condition.type === "ENEMY_WEAK_TO" && (
         <EnumSelector
-          label="属性"
+          label={locale === "ja" ? "属性" : "Element"}
           options={ELEMENTS}
           value={condition.element}
           onChange={(e) =>
@@ -272,7 +280,7 @@ function ConditionStep({
       )}
       {condition.type === "ENEMY_TYPE" && (
         <EnumSelector
-          label="種族"
+          label={locale === "ja" ? "種族" : "Race"}
           options={ENEMY_TYPES}
           value={condition.enemyType}
           onChange={(e) =>
@@ -297,6 +305,7 @@ function TargetStep({
   target: Target;
   onChange: (t: Target) => void;
 }) {
+  const { locale } = useLocale();
   const compatible = new Set(getCompatibleTargets(condition));
   const targets: TargetType[] = [
     "SELF",
@@ -310,7 +319,15 @@ function TargetStep({
   return (
     <div className="space-y-2">
       <p className="text-xs text-slate-500">
-        条件 <code className="font-mono">{condition.type}</code> と組み合わせ可能な対象だけが選べます。
+        {locale === "ja" ? (
+          <>
+            条件 <code className="font-mono">{condition.type}</code> と組み合わせ可能な対象だけが選べます。
+          </>
+        ) : (
+          <>
+            Only targets compatible with <code className="font-mono">{condition.type}</code> can be selected.
+          </>
+        )}
       </p>
       <div className="grid grid-cols-2 gap-2">
         {targets.map((t) => {
@@ -353,12 +370,15 @@ function ActionStep({
   action: Action;
   onChange: (a: Action) => void;
 }) {
+  const { locale } = useLocale();
   const allowed = getJobActions(jobId);
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-500">
-        {jobId} が使える行動だけが表示されています。
+        {locale === "ja"
+          ? `${jobId} が使える行動だけが表示されています。`
+          : `Only actions usable by ${jobId} are shown.`}
       </p>
       <div className="flex flex-wrap gap-1.5">
         {allowed.map((type) => (
@@ -380,7 +400,7 @@ function ActionStep({
 
       {action.type === "SKILL" && (
         <EnumSelector
-          label="スキル"
+          label={locale === "ja" ? "スキル" : "Skill"}
           options={SKILL_IDS}
           value={action.skillId}
           onChange={(v) => onChange({ type: "SKILL", skillId: v as (typeof SKILL_IDS)[number] })}
@@ -388,7 +408,7 @@ function ActionStep({
       )}
       {action.type === "CAST_OFFENSE" && (
         <EnumSelector
-          label="攻撃魔法"
+          label={locale === "ja" ? "攻撃魔法" : "Offense Magic"}
           options={OFFENSE_SPELL_IDS}
           value={action.spellId}
           onChange={(v) =>
@@ -401,7 +421,7 @@ function ActionStep({
       )}
       {action.type === "CAST_HEAL" && (
         <EnumSelector
-          label="回復魔法"
+          label={locale === "ja" ? "回復魔法" : "Heal Magic"}
           options={HEAL_SPELL_IDS}
           value={action.spellId}
           onChange={(v) =>
@@ -411,7 +431,7 @@ function ActionStep({
       )}
       {action.type === "CAST_REVIVE" && (
         <EnumSelector
-          label="蘇生魔法"
+          label={locale === "ja" ? "蘇生魔法" : "Revive Magic"}
           options={REVIVE_SPELL_IDS}
           value={action.spellId}
           onChange={(v) =>
@@ -421,7 +441,7 @@ function ActionStep({
       )}
       {action.type === "CAST_BUFF" && (
         <EnumSelector
-          label="補助魔法"
+          label={locale === "ja" ? "補助魔法" : "Buff Magic"}
           options={BUFF_IDS}
           value={action.buffId}
           onChange={(v) => onChange({ type: "CAST_BUFF", buffId: v as (typeof BUFF_IDS)[number] })}
@@ -429,7 +449,7 @@ function ActionStep({
       )}
       {action.type === "CAST_DEBUFF" && (
         <EnumSelector
-          label="妨害魔法"
+          label={locale === "ja" ? "妨害魔法" : "Debuff Magic"}
           options={DEBUFF_IDS}
           value={action.debuffId}
           onChange={(v) =>
@@ -439,7 +459,7 @@ function ActionStep({
       )}
       {action.type === "CAST_CURE_STATUS" && (
         <EnumSelector
-          label="解除する状態"
+          label={locale === "ja" ? "解除する状態" : "Status to cure"}
           options={STATUSES}
           value={action.status}
           onChange={(v) => onChange({ type: "CAST_CURE_STATUS", status: v as Status })}
@@ -447,7 +467,7 @@ function ActionStep({
       )}
       {action.type === "USE_ITEM" && (
         <EnumSelector
-          label="アイテム"
+          label={locale === "ja" ? "アイテム" : "Item"}
           options={ITEM_IDS}
           value={action.itemId}
           onChange={(v) => onChange({ type: "USE_ITEM", itemId: v as (typeof ITEM_IDS)[number] })}
@@ -468,9 +488,12 @@ function ValueSlider({
   value: number;
   onChange: (v: number) => void;
 }) {
+  const { locale } = useLocale();
   return (
     <div className="flex items-center gap-3">
-      <label className="text-xs text-slate-500 shrink-0">値 (%)</label>
+      <label className="text-xs text-slate-500 shrink-0">
+        {locale === "ja" ? "値 (%)" : "Value (%)"}
+      </label>
       <input
         type="range"
         min={0}
@@ -479,7 +502,7 @@ function ValueSlider({
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="flex-1"
-        aria-label="閾値"
+        aria-label={locale === "ja" ? "閾値" : "Threshold"}
       />
       <span className="font-mono text-sm w-10 text-right">{value}</span>
     </div>

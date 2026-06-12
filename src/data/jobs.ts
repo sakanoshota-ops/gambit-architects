@@ -88,6 +88,7 @@ export function createPartyMember(
     isAlly: true,
     isAlive: true,
     weaknesses: [],
+    resistances: [],
     enemyType: "HUMANOID",
     isBoss: false,
     gambitSet,

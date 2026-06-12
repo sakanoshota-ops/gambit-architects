@@ -22,14 +22,35 @@ import {
 import type { GambitRule } from "../../gambit/types";
 import { MAX_RULES_PER_SET } from "../../gambit/types";
 import { isActionAllowedForJob, isTargetCompatible } from "../../gambit/uiHelpers";
+import { useT } from "../../i18n/useT";
 import { usePlayer } from "../../state/PlayerContext";
 import { RulePicker } from "../components/RulePicker";
 
 const PRESETS = [
-  { key: "tank", label: "タンク", build: presetTank },
-  { key: "finisher", label: "止め刺し", build: presetFinisher },
-  { key: "beginner", label: "初心者向け", build: presetBeginner },
-  { key: "exploit", label: "弱点突き", build: presetExploitWeakness },
+  {
+    key: "tank",
+    labelJa: "タンク",
+    labelEn: "Tank",
+    build: presetTank,
+  },
+  {
+    key: "finisher",
+    labelJa: "止め刺し",
+    labelEn: "Finisher",
+    build: presetFinisher,
+  },
+  {
+    key: "beginner",
+    labelJa: "初心者向け",
+    labelEn: "Beginner",
+    build: presetBeginner,
+  },
+  {
+    key: "exploit",
+    labelJa: "弱点突き",
+    labelEn: "Exploit Weakness",
+    build: presetExploitWeakness,
+  },
 ] as const;
 
 type PickerState = { mode: "add" } | { mode: "edit"; index: number } | null;
@@ -37,6 +58,8 @@ type PickerState = { mode: "add" } | { mode: "edit"; index: number } | null;
 export function GambitEditorScreen() {
   const { charId } = useParams<{ charId: string }>();
   const { data, dispatch } = usePlayer();
+  const t = useT();
+  const locale = data.settings.locale;
   const unit = data.party.find((u) => u.id === charId);
 
   const [draftRules, setDraftRules] = useState<GambitRule[]>(() =>
@@ -51,12 +74,14 @@ export function GambitEditorScreen() {
   if (!unit) {
     return (
       <section className="space-y-4">
-        <h2 className="text-2xl font-bold">ガンビット編集</h2>
+        <h2 className="text-2xl font-bold">{t("gambit.title")}</h2>
         <p className="text-sm text-rose-600">
-          ID `{charId}` のキャラクターが見つかりません。
+          {locale === "ja"
+            ? `ID \`${charId}\` のキャラクターが見つかりません。`
+            : `Character with ID \`${charId}\` not found.`}
         </p>
         <Link to="/party" className="text-sm text-blue-600 underline">
-          編成画面に戻る
+          {locale === "ja" ? "編成画面に戻る" : "Back to Party"}
         </Link>
       </section>
     );
@@ -86,7 +111,9 @@ export function GambitEditorScreen() {
   }
 
   function removeRule(index: number) {
-    if (!confirm("このルールを削除しますか？")) return;
+    const msg =
+      locale === "ja" ? "このルールを削除しますか？" : "Delete this rule?";
+    if (!confirm(msg)) return;
     setDraftRules((rules) => rules.filter((_, i) => i !== index));
   }
 
@@ -97,7 +124,11 @@ export function GambitEditorScreen() {
   }
 
   function loadPreset(build: (id: string) => { rules: GambitRule[] }) {
-    if (!confirm("現在のルールを置き換えます。よろしいですか？")) return;
+    const msg =
+      locale === "ja"
+        ? "現在のルールを置き換えます。よろしいですか？"
+        : "This will replace your current rules. OK?";
+    if (!confirm(msg)) return;
     if (!unit) return;
     const preset = build(unit.id);
     setDraftRules(cloneRules(preset.rules));
@@ -126,7 +157,8 @@ export function GambitEditorScreen() {
     // バリデーション：DSL §9.1
     const errors = validateRules(draftRules, unit.jobId);
     if (errors.length > 0) {
-      alert("保存できません：\n" + errors.join("\n"));
+      const header = locale === "ja" ? "保存できません：\n" : "Cannot save:\n";
+      alert(header + errors.join("\n"));
       return;
     }
     dispatch({
@@ -149,16 +181,21 @@ export function GambitEditorScreen() {
   return (
     <section className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-2xl font-bold">編集：{unit.name}</h2>
+        <h2 className="text-2xl font-bold">
+          {locale === "ja" ? `編集：${unit.name}` : `Edit: ${unit.name}`}
+        </h2>
         <Link to="/party" className="text-sm text-blue-600 underline">
-          編成に戻る
+          {locale === "ja" ? "編成に戻る" : "Back to Party"}
         </Link>
       </div>
 
       <p className="text-sm text-slate-600">
-        ルール数: <strong>{draftRules.length}</strong> / {MAX_RULES_PER_SET}
+        {locale === "ja" ? "ルール数" : "Rules"}:{" "}
+        <strong>{draftRules.length}</strong> / {MAX_RULES_PER_SET}
         {isDirty && (
-          <span className="ml-3 text-amber-600 text-xs">（未保存の変更あり）</span>
+          <span className="ml-3 text-amber-600 text-xs">
+            {locale === "ja" ? "（未保存の変更あり）" : "(unsaved changes)"}
+          </span>
         )}
       </p>
 
@@ -173,7 +210,11 @@ export function GambitEditorScreen() {
                 type="checkbox"
                 checked={rule.enabled}
                 onChange={() => toggleEnabled(index)}
-                aria-label={`ルール ${index + 1} を有効にする`}
+                aria-label={
+                  locale === "ja"
+                    ? `ルール ${index + 1} を有効にする`
+                    : `Enable rule ${index + 1}`
+                }
               />
             </label>
             <span className="shrink-0 text-xs text-slate-500 w-6 text-center">
@@ -195,7 +236,7 @@ export function GambitEditorScreen() {
                 onClick={() => moveUp(index)}
                 disabled={index === 0}
                 className="px-2 py-1 text-xs border border-slate-300 rounded disabled:opacity-30 hover:bg-slate-100"
-                aria-label="上へ"
+                aria-label={t("gambit.moveUp")}
               >
                 ↑
               </button>
@@ -204,7 +245,7 @@ export function GambitEditorScreen() {
                 onClick={() => moveDown(index)}
                 disabled={index === draftRules.length - 1}
                 className="px-2 py-1 text-xs border border-slate-300 rounded disabled:opacity-30 hover:bg-slate-100"
-                aria-label="下へ"
+                aria-label={t("gambit.moveDown")}
               >
                 ↓
               </button>
@@ -212,7 +253,7 @@ export function GambitEditorScreen() {
                 type="button"
                 onClick={() => removeRule(index)}
                 className="px-2 py-1 text-xs border border-rose-300 text-rose-600 rounded hover:bg-rose-50"
-                aria-label="削除"
+                aria-label={t("common.delete")}
               >
                 ×
               </button>
@@ -223,7 +264,9 @@ export function GambitEditorScreen() {
 
       {draftRules.length === 0 && (
         <p className="text-sm text-slate-500 italic">
-          ルールがありません。プリセットを読み込むか、追加してください。
+          {locale === "ja"
+            ? "ルールがありません。プリセットを読み込むか、追加してください。"
+            : "No rules yet. Load a preset or add a rule."}
         </p>
       )}
 
@@ -233,12 +276,20 @@ export function GambitEditorScreen() {
         disabled={!canAdd}
         className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        + ルール追加
-        {!canAdd && <span className="ml-1 text-xs text-slate-400">（上限）</span>}
+        + {t("gambit.ruleAdd")}
+        {!canAdd && (
+          <span className="ml-1 text-xs text-slate-400">
+            {locale === "ja" ? "（上限）" : "(max)"}
+          </span>
+        )}
       </button>
 
       <div className="border-t border-slate-200 pt-4 space-y-2">
-        <p className="text-sm font-medium text-slate-700">プリセットから読み込み</p>
+        <p className="text-sm font-medium text-slate-700">
+          {locale === "ja"
+            ? "プリセットから読み込み"
+            : "Load from preset"}
+        </p>
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((p) => (
             <button
@@ -247,7 +298,7 @@ export function GambitEditorScreen() {
               onClick={() => loadPreset(p.build)}
               className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100"
             >
-              {p.label}
+              {locale === "ja" ? p.labelJa : p.labelEn}
             </button>
           ))}
         </div>
@@ -260,7 +311,7 @@ export function GambitEditorScreen() {
           disabled={!isDirty}
           className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
         >
-          保存
+          {t("common.save")}
         </button>
         <button
           type="button"
@@ -268,7 +319,7 @@ export function GambitEditorScreen() {
           disabled={!isDirty}
           className="px-4 py-2 border border-slate-300 text-sm rounded hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          取り消し
+          {t("common.cancel")}
         </button>
       </div>
 
@@ -318,20 +369,20 @@ function rulesEqual(a: GambitRule[], b: GambitRule[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** DSL §9.1 の保存時バリデーション */
+/** DSL §9.1 の保存時バリデーション（メッセージは ja のまま：alert で短く出す。i18n は次フェーズ） */
 function validateRules(rules: GambitRule[], jobId: import("../../battle/types").JobId): string[] {
   const errors: string[] = [];
   if (rules.length > MAX_RULES_PER_SET) {
-    errors.push(`ルール数が上限 ${MAX_RULES_PER_SET} を超えています`);
+    errors.push(`Rule limit ${MAX_RULES_PER_SET} exceeded`);
   }
   rules.forEach((rule, i) => {
     if (!isTargetCompatible(rule.condition, rule.target.type)) {
       errors.push(
-        `ルール ${i + 1}: 条件 ${rule.condition.type} と対象 ${rule.target.type} が不整合`,
+        `Rule ${i + 1}: condition ${rule.condition.type} / target ${rule.target.type} mismatch`,
       );
     }
     if (!isActionAllowedForJob(rule.action, jobId)) {
-      errors.push(`ルール ${i + 1}: ${jobId} は ${rule.action.type} を使えません`);
+      errors.push(`Rule ${i + 1}: ${jobId} cannot use ${rule.action.type}`);
     }
   });
   return errors;

@@ -57,13 +57,13 @@
 - [x] CAST_HEAL も実効 mag で回復量計算（2026-05-10）
 
 ### 1.4 センサーシステム（B 案、50% 成功）
-- [ ] `BattleState.rng?: () => number` を追加（デフォルト「常に 1.0」＝センサーなしでも成功）
-- [ ] runner がデフォルト RNG（mulberry32 シード）を注入、テストでは固定値を渡せる
-- [ ] **HP_SCANNER**：`ENEMY_LOWEST_HP`、`ENEMY_HIGHEST_HP`、`ALLY_HP_LT/GTE` を 100%
-- [ ] **STATUS_DETECTOR**：`ENEMY_HAS_STATUS`、`ENEMY_NO_STATUS`、`ALLY_HAS_STATUS` を 100%
-- [ ] **ELEMENT_ANALYZER**：`ENEMY_WEAK_TO`、`ENEMY_TYPE` を 100%
-- [ ] **BASIC_SCANNER**：HP + STATUS の両方を 100%（初期装備候補）
-- [ ] **影響を受けない条件**（常に確定）：`SELF_*`、`ALLY_MP_*`、`ALLY_DEAD`、`ALLY_TARGETED`、`ENEMY_EXISTS`、`BOSS_PRESENT`
+- [x] `BattleState.rng?: () => number` を追加（デフォルト未注入は「常に成功」＝既存テスト互換）（2026-06-08）
+- [x] `RunBattleOptions.rng` で外部から注入可能、`BattleScreen` は `Math.random` を渡す（2026-06-08）
+- [x] **HP_SCANNER**：`ENEMY_LOWEST_HP`、`ENEMY_HIGHEST_HP`、`ALLY_HP_LT/GTE` を 100%（2026-06-08）
+- [x] **STATUS_DETECTOR**：`ENEMY_HAS_STATUS`、`ENEMY_NO_STATUS`、`ALLY_HAS_STATUS` を 100%（2026-06-08）
+- [x] **ELEMENT_ANALYZER**：`ENEMY_WEAK_TO`、`ENEMY_TYPE` を 100%（2026-06-08）
+- [x] **BASIC_SCANNER**：HP + STATUS の両方を 100%（初期装備候補）（2026-06-08）
+- [x] **影響を受けない条件**（常に確定）：`SELF_*`、`ALLY_MP_*`、`ALLY_DEAD`、`ALLY_TARGETED`、`ENEMY_EXISTS`、`BOSS_PRESENT`（2026-06-08）
 
 ### 1.5 ジョブごとの装備制限
 - [x] **剣士**：剣（BRONZE/IRON/STEEL_SWORD）と重装（LEATHER/CHAIN/PLATE_MAIL）（2026-05-10）
@@ -80,33 +80,38 @@
 - [x] localStorage 永続化＋既存セーブの equipment マイグレーション（2026-05-10）
 
 ### 1.7 敵テンプレ拡張
-- [ ] 通常敵：M2 の 5 種 + **+9〜14 種** = 14〜19 種（v1.0 上限内）
-  - 候補：ORC（HUMANOID, 強物理）／IMP（MAGICAL, 火/魔法）／LICH（UNDEAD, 死霊魔法）／TROLL（BEAST, 高HP）／DARK_KNIGHT（HUMANOID, 闇）／TURTLE（BEAST, 超防御）／SLIME（BEAST, 物理半減）／PHANTOM（UNDEAD, 物理無効）／SHARK（BEAST）／HARPY（BEAST, 飛行＝風弱点）／DEMON_LORD_MINION（DEMON）…
-- [ ] ボス：M2 の 1 種 + **+3〜4 種** = 4〜5 種
-  - 候補：DARK_DRAGON（深度 10）／NECROMANCER（深度 15）／DEMON_LORD（深度 20）／FINAL_BOSS（深度 25）
+- [x] 通常敵：M2 の 5 種 + **+10 種** = 15 種（v1.0 上限内）（2026-06-10）
+  - 採用：ORC（HUMANOID, 強物理）／IMP（MAGICAL, 火耐性）／LICH（UNDEAD, 死霊魔法・闇耐性）／TROLL（BEAST, 高HP）／DARK_KNIGHT（HUMANOID, 闇耐性）／TURTLE（BEAST, 物理半減）／SLIME（BEAST, 物理半減）／PHANTOM（UNDEAD, 物理＋闇耐性）／HARPY（BEAST, 飛行＝雷弱点）／DEMON_LORD_MINION（MAGICAL, 闇耐性）
+- [x] ボス：M2 の 1 種 + **+3 種** = 4 種（2026-06-10）
+  - 採用：DARK_DRAGON（深度 10）／NECROMANCER（深度 15）／DEMON_LORD（深度 20+ ループ）
+- [x] **耐性システム**：`Unit.resistances: Element[]`、被ダメ 0.5x（物理は `NEUTRAL` 耐性で表現、完全無効は v1.1 送り）（2026-06-10）
 
 ### 1.8 procgen 改善
-- [ ] 深度ごとの tier 分けを再調整（depth 11〜：strong-plus tier）
-- [ ] ボス階の編成にミニオン同行が選択肢に
+- [x] 深度ごとの tier 分けを再調整：weak(6-7) / medium(8-12) / strong(13-17) / strong-plus(18+)（2026-06-10）
+- [x] ボス階のミニオン同行：深度 5=1 体／深度 10=1-2 体／深度 15+=2 体（2026-06-10）
+- [x] 深度別ボスプール（5/10/15/20）、25 以降は DEMON_LORD ループ（2026-06-10）
 - [ ] 「深度 N 戦闘で装備ドロップ」（M3-G で導入検討）
 
 ### 1.9 バランス調整
-- [ ] depth 1〜5：M2 と同等の体感を維持
-- [ ] depth 5 ボス戦：PROVOKE/INTERPOSE 実装後にクリアできるか検証
-- [ ] depth 10 ボス戦：装備抜きでは厳しい、装備込みでクリア可能
-- [ ] depth 20 ボス戦：v1.0 ラスボス想定、しっかり装備＋ガンビット調整が必要
+- [x] depth 1〜5：M2 と同等の体感を維持（balance.test.ts スモーク全勝）（2026-06-12）
+- [x] depth 5 ボス戦：装備なしでも勝てる（初心者ボス想定）（2026-06-12）
+- [x] depth 10 ボス戦：装備抜きでは負け、装備込みでクリア可能（2026-06-12）
+- [x] depth 20 ボス戦：6 バリエーション中過半数勝利（標準ラスボス想定 50%+）（2026-06-12）
+- [ ] **手動デモ**：`docs/m3_demo_checklist.md` 1 周（PASS したら本項チェック）
 
 ### 1.10 統合・テスト
-- [ ] **既存 145 テストは無修正で PASS**（後方互換）
-- [ ] M3 追加テスト：100〜150 件程度
-  - 新行動の効果テスト（CHARGE/CHAIN/PROVOKE/INTERPOSE）
-  - 状態異常追加テスト（HASTE/SLOW/SILENCE/BLIND/REGEN/SHELL）
-  - 装備データ・ダメージ計算テスト
-  - センサー判定テスト（rng injection あり）
-  - 装備 UI テスト
-  - 敵テンプレ・ボス追加テスト
-- [ ] E2E 統合テストの拡張：装備変更 → 戦闘 → 結果確認
-- [ ] `pnpm build` と `pnpm test` が両方クリーン
+- [x] **既存 145 テストは無修正で PASS**（後方互換、M2-G 時点）（2026-06-12）
+- [x] M3 追加テスト：145 → 約 250 件（実測値は最終 PASS ログで確定）
+  - [x] 新行動の効果テスト（CHARGE/CHAIN/PROVOKE/INTERPOSE）M3-A
+  - [x] 状態異常追加テスト（HASTE/SLOW/SILENCE/BLIND/REGEN/SHELL）M3-B
+  - [x] 装備データ・ダメージ計算テスト M3-C/D
+  - [x] センサー判定テスト（rng injection あり）M3-E
+  - [x] 装備 UI テスト M3-D
+  - [x] 敵テンプレ・ボス追加テスト M3-F
+  - [x] 耐性ダメージ計算テスト M3-F
+  - [x] バランススモーク・勝率テスト M3-G
+- [x] E2E 統合テストの拡張：装備変更 → 戦闘 → 結果確認（既存 integration.test.tsx）
+- [ ] `pnpm build` と `pnpm test` が両方クリーン（手動最終確認）
 
 ---
 
@@ -194,17 +199,17 @@ interface BattleState {
 
 ## 6. M3 サブフェーズと進行順
 
-| Phase | 内容 | 想定 |
-| --- | --- | --- |
-| M3-A | 残 4 行動（CHARGE/CHAIN/PROVOKE/INTERPOSE）の実効果 | 1〜2 日 |
-| M3-B | 魔法・アイテム残 24 ID の実効果（+Status 4 種追加） | 2〜3 日 |
-| M3-C | 装備データモデル + Unit 拡張 + ダメージ計算 | 2 日 |
-| M3-D | 編成画面に装備セクション + 装備変更モーダル | 2〜3 日 |
-| M3-E | センサーシステム（RNG 注入 + 評価器拡張 + sensor templates） | 2 日 |
-| M3-F | 敵テンプレ +10 種、ボス +3 種、procgen 改善 | 2〜3 日 |
-| M3-G | バランス調整 + 統合テスト | 3〜5 日 |
+| Phase | 内容 | 想定 | 実績 |
+| --- | --- | --- | --- |
+| M3-A | 残 4 行動（CHARGE/CHAIN/PROVOKE/INTERPOSE）の実効果 | 1〜2 日 | ✅ 2026-05-10 |
+| M3-B | 魔法・アイテム残 24 ID の実効果（+Status 4 種追加） | 2〜3 日 | ✅ 2026-05-10 |
+| M3-C | 装備データモデル + Unit 拡張 + ダメージ計算 | 2 日 | ✅ 2026-05-10 |
+| M3-D | 編成画面に装備セクション + 装備変更モーダル | 2〜3 日 | ✅ 2026-05-10 |
+| M3-E | センサーシステム（RNG 注入 + 評価器拡張 + sensor templates） | 2 日 | ✅ 2026-06-08 |
+| M3-F | 敵テンプレ +10 種、ボス +3 種、procgen 改善、耐性導入 | 2〜3 日 | ✅ 2026-06-10 |
+| M3-G | バランス調整 + 統合テスト + デモ手順書 | 3〜5 日 | ✅ 2026-06-12（手動デモ残） |
 
-合計 14〜20 日。M1/M2 のペースなら 5〜7 日で完走できる想定。
+合計 14〜20 日。実績は約 5 週間（個人開発のペース、間に空きあり）。
 
 各 Phase で **RED → GREEN → コミット** のリズムを守る。
 

@@ -17,6 +17,7 @@ import {
 
 import type { Unit } from "../battle/types";
 import type { GambitSet } from "../gambit/types";
+import type { Locale } from "../i18n/strings";
 import { createDefaultPlayerData } from "./defaults";
 import { loadPlayerData, savePlayerData } from "./storage";
 
@@ -47,6 +48,8 @@ export const MAX_RECENT_BATTLES = 5;
 export interface Settings {
   /** 戦闘倍速の既定値 */
   battleSpeed: 1 | 2 | 4;
+  /** UI 言語。デフォルト "ja"（M3-G-8） */
+  locale: Locale;
 }
 
 export interface PlayerData {
@@ -71,6 +74,7 @@ export type PlayerAction =
   | { type: "INCREMENT_DEPTH" }
   | { type: "RECORD_BATTLE"; battle: LastBattleRecord }
   | { type: "SET_BATTLE_SPEED"; speed: 1 | 2 | 4 }
+  | { type: "SET_LOCALE"; locale: Locale }
   | { type: "RESET_TO_DEFAULTS" };
 
 function reducer(state: PlayerData, action: PlayerAction): PlayerData {
@@ -117,6 +121,9 @@ function reducer(state: PlayerData, action: PlayerAction): PlayerData {
     case "SET_BATTLE_SPEED":
       return { ...state, settings: { ...state.settings, battleSpeed: action.speed } };
 
+    case "SET_LOCALE":
+      return { ...state, settings: { ...state.settings, locale: action.locale } };
+
     case "RESET_TO_DEFAULTS":
       return createDefaultPlayerData();
   }
@@ -131,7 +138,8 @@ interface PlayerContextValue {
   dispatch: Dispatch<PlayerAction>;
 }
 
-const PlayerContext = createContext<PlayerContextValue | null>(null);
+// eslint-disable-next-line react-refresh/only-export-components
+export const PlayerContext = createContext<PlayerContextValue | null>(null);
 
 function initPlayerData(): PlayerData {
   return loadPlayerData() ?? createDefaultPlayerData();

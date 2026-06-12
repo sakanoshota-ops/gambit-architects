@@ -56,6 +56,13 @@ export interface Unit {
   // -- 種族・属性（味方も持つ。デフォルト値ありで対称化）--
   /** 弱点属性（味方は通常 []） */
   weaknesses: Element[];
+  /**
+   * 耐性属性（被ダメ 0.5x、味方は通常 []）。
+   * - 魔法ダメ：`element` が含まれていれば 0.5x
+   * - 物理ダメ：`NEUTRAL` が含まれていれば 0.5x（SLIME/TURTLE/PHANTOM 等の物理半減を表現）
+   * - v1.0 では「完全無効」は実装せず、全て 0.5x に統一（誘惑への防壁）
+   */
+  resistances: Element[];
   /** 種族。味方は通常 "HUMANOID"。フィールド名は DSL の `EnemyType` を踏襲 */
   enemyType: EnemyType;
   /** ボスフラグ。味方は常に false */

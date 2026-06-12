@@ -22,6 +22,12 @@ import {
   type WeaponId,
 } from "../../data/equipment";
 import type { Unit } from "../../battle/types";
+import {
+  localizedArmor,
+  localizedSensor,
+  localizedWeapon,
+} from "../../i18n/names";
+import { useT, useLocale } from "../../i18n/useT";
 
 interface EquipmentPickerProps {
   open: boolean;
@@ -31,6 +37,8 @@ interface EquipmentPickerProps {
 }
 
 export function EquipmentPicker({ open, unit, onSave, onCancel }: EquipmentPickerProps) {
+  const t = useT();
+  const { locale } = useLocale();
   const [weapon, setWeapon] = useState<WeaponId | "">(unit.equipment.weapon ?? "");
   const [armor, setArmor] = useState<ArmorId | "">(unit.equipment.armor ?? "");
   const [sensor, setSensor] = useState<SensorId | "">(unit.equipment.sensor ?? "");
@@ -81,33 +89,45 @@ export function EquipmentPicker({ open, unit, onSave, onCancel }: EquipmentPicke
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full flex flex-col">
         <header className="border-b border-slate-200 px-5 py-3">
           <h3 id="equipment-picker-title" className="font-semibold">
-            装備変更：{unit.name}
+            {t("party.changeEquipment", { name: unit.name })}
           </h3>
         </header>
 
         <div className="p-5 space-y-4">
           <SelectRow
-            label="武器"
+            label={t("party.weapon")}
+            noneLabel={t("common.none")}
             value={weapon}
             onChange={setWeapon}
-            options={allowedWeapons.map((w) => ({ id: w.id, label: w.displayName }))}
+            options={allowedWeapons.map((w) => ({
+              id: w.id,
+              label: localizedWeapon(w.id, locale),
+            }))}
           />
           <SelectRow
-            label="防具"
+            label={t("party.armor")}
+            noneLabel={t("common.none")}
             value={armor}
             onChange={setArmor}
-            options={allowedArmors.map((a) => ({ id: a.id, label: a.displayName }))}
+            options={allowedArmors.map((a) => ({
+              id: a.id,
+              label: localizedArmor(a.id, locale),
+            }))}
           />
           <SelectRow
-            label="センサー"
+            label={t("party.sensor")}
+            noneLabel={t("common.none")}
             value={sensor}
             onChange={setSensor}
-            options={allSensors.map((s) => ({ id: s.id, label: s.displayName }))}
+            options={allSensors.map((s) => ({
+              id: s.id,
+              label: localizedSensor(s.id, locale),
+            }))}
           />
 
           <div className="border-t border-slate-200 pt-3 space-y-1 text-sm font-mono">
             <p className="text-xs text-slate-500 font-sans">
-              ステータス変化（base → 装備後）
+              {t("party.statChange")}
             </p>
             <StatLine label="ATK" base={baseAtk} eff={effAtk} />
             <StatLine label="DEF" base={baseDef} eff={effDef} />
@@ -121,14 +141,14 @@ export function EquipmentPicker({ open, unit, onSave, onCancel }: EquipmentPicke
             onClick={onCancel}
             className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100"
           >
-            キャンセル
+            {t("common.cancel")}
           </button>
           <button
             type="button"
             onClick={handleSave}
             className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            装備
+            {t("common.equip")}
           </button>
         </footer>
       </div>
@@ -142,11 +162,13 @@ export function EquipmentPicker({ open, unit, onSave, onCancel }: EquipmentPicke
 
 function SelectRow<TId extends string>({
   label,
+  noneLabel,
   value,
   onChange,
   options,
 }: {
   label: string;
+  noneLabel: string;
   value: TId | "";
   onChange: (v: TId | "") => void;
   options: Array<{ id: TId; label: string }>;
@@ -160,7 +182,7 @@ function SelectRow<TId extends string>({
         className="flex-1 border border-slate-300 rounded px-2 py-1 text-sm"
         aria-label={label}
       >
-        <option value="">なし</option>
+        <option value="">{noneLabel}</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.label}

@@ -52,6 +52,7 @@ const SKILL_POWER_SLASH_MULT = 1.5;
 const SKILL_GUARD_BREAK_MULT = 1.3;
 const SKILL_WHIRLWIND_MULT = 0.8; // 全体ヒット、単発威力は控えめ
 const WEAKNESS_MULT = 1.5;
+const RESISTANCE_MULT = 0.5; // M3-F: 耐性属性の被ダメ
 const REVIVE_HP_RATIO = 0.25;
 const BLIND_HIT_THRESHOLD = 0.5; // rng() < 0.5 で miss
 
@@ -301,6 +302,10 @@ function calculatePhysicalDamage(
   if (target.statuses.includes("PROTECT")) {
     dmg = Math.floor(dmg * PROTECT_REDUCTION);
   }
+  // M3-F: 物理は NEUTRAL 耐性で 0.5x（SLIME / TURTLE / PHANTOM の物理半減）
+  if (target.resistances.includes("NEUTRAL")) {
+    dmg = Math.floor(dmg * RESISTANCE_MULT);
+  }
 
   return Math.max(MIN_DAMAGE, dmg);
 }
@@ -319,6 +324,10 @@ function calculateMagicDamage(
   dmg = Math.floor(dmg * multiplier);
   if (target.weaknesses.includes(element)) {
     dmg = Math.floor(dmg * WEAKNESS_MULT);
+  }
+  // M3-F: 耐性属性なら 0.5x（弱点とスタックしうる：両方持てば 1.5 * 0.5 = 0.75x）
+  if (target.resistances.includes(element)) {
+    dmg = Math.floor(dmg * RESISTANCE_MULT);
   }
   // M3-B: SHELL target への魔法被ダメ -25%
   if (target.statuses.includes("SHELL")) {
