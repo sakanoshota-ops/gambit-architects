@@ -56,7 +56,6 @@ const RESISTANCE_MULT = 0.5; // M3-F: 耐性属性の被ダメ
 const REVIVE_HP_RATIO = 0.25;
 const BLIND_HIT_THRESHOLD = 0.5; // rng() < 0.5 で miss
 
-const PROTECT_DURATION = 4;
 const BUFF_DURATION = 4;
 const POISON_DURATION = 5;
 const DEBUFF_DURATION = 5;

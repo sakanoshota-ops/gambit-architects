@@ -309,7 +309,8 @@ export function translate(
 ): string {
   const entry = STRINGS[key];
   if (!entry) return key;
-  let text = entry[locale] ?? entry.ja ?? key;
+  // `as const satisfies` でリテラル型になっているため、変数は string 型に明示する
+  let text: string = entry[locale] ?? entry.ja ?? key;
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       text = text.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));

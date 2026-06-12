@@ -53,7 +53,8 @@ interface RulePickerProps {
 
 export function RulePicker({ open, jobId, initialRule, onSave, onCancel }: RulePickerProps) {
   const t = useT();
-  const { locale } = useLocale();
+  // 内部の ConditionStep / TargetStep / ActionStep が個別に useLocale() するため
+  // ここでは t() のみ使用
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [condition, setCondition] = useState<Condition>(
     initialRule?.condition ?? defaultCondition(),
