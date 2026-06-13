@@ -10,8 +10,21 @@
  */
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { JobId } from "../../battle/types";
+import {
+  localizedBuff,
+  localizedDebuff,
+  localizedElement,
+  localizedEnemyType,
+  localizedHealSpell,
+  localizedItem,
+  localizedOffenseSpell,
+  localizedSkill,
+  localizedStatus,
+} from "../../i18n/names";
+import { translate, type StringKey } from "../../i18n/strings";
 import { useT, useLocale } from "../../i18n/useT";
 import {
   BUFF_IDS,
@@ -88,18 +101,23 @@ export function RulePicker({ open, jobId, initialRule, onSave, onCancel }: RuleP
     });
   }
 
-  return (
+  /**
+   * M3-G-12：モーダルを Portal で document.body 直下に描画。
+   *
+   * 背景：Layout の <main className="overflow-auto"> の子孫として描画されると、
+   *   `fixed` でも一部 Chromium で native <select> の popup がクリップされる。
+   *   Portal で <main> の外に出すと回避できる。
+   *
+   * 過去の修正（M3-D / M3-G-6）も再発防止：内部に max-h-[90vh] + overflow-auto を
+   *   つけない（同じ Chromium バグの別系統トリガ）。
+   */
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="picker-title"
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
     >
-      {/*
-        M3-D 修正の再発防止：max-h-[90vh] + overflow-auto を子に持たせると
-        Chromium の native <select> popup がモーダル境界でクリップされ、
-        2 回目以降ドロップダウンが開かなくなる。EquipmentPicker と同じ対応で両方とも外す。
-      */}
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full flex flex-col">
         <header className="border-b border-slate-200 px-5 py-3 flex items-center justify-between">
           <h3 id="picker-title" className="font-semibold">
@@ -168,7 +186,8 @@ export function RulePicker({ open, jobId, initialRule, onSave, onCancel }: RuleP
           </div>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -221,6 +240,7 @@ function ConditionStep({
   condition: Condition;
   onChange: (c: Condition) => void;
 }) {
+  const t = useT();
   const { locale } = useLocale();
   const grouped = groupBy(CONDITION_TYPES, (t) => getConditionCategory(t as ConditionType));
   const labels: Record<string, string> =
@@ -241,14 +261,15 @@ function ConditionStep({
                 key={type}
                 type="button"
                 onClick={() => onChange(initialConditionForType(type as ConditionType))}
+                title={type}
                 className={
-                  "px-2.5 py-1 text-xs font-mono rounded border " +
+                  "px-2.5 py-1 text-xs rounded border " +
                   (condition.type === type
                     ? "bg-blue-600 text-white border-blue-600"
                     : "bg-white border-slate-300 hover:bg-slate-100")
                 }
               >
-                {type}
+                {t(`conditionLabel.${type}` as StringKey)}
               </button>
             ))}
           </div>
@@ -267,6 +288,7 @@ function ConditionStep({
           options={STATUSES}
           value={condition.status}
           onChange={(s) => onChange({ ...condition, status: s } as Condition)}
+          getLabel={(id) => localizedStatus(id as Status, locale)}
         />
       )}
       {condition.type === "ENEMY_WEAK_TO" && (
@@ -277,6 +299,7 @@ function ConditionStep({
           onChange={(e) =>
             onChange({ type: "ENEMY_WEAK_TO", element: e as Element })
           }
+          getLabel={(id) => localizedElement(id as Element, locale)}
         />
       )}
       {condition.type === "ENEMY_TYPE" && (
@@ -287,6 +310,7 @@ function ConditionStep({
           onChange={(e) =>
             onChange({ type: "ENEMY_TYPE", enemyType: e as EnemyType })
           }
+          getLabel={(id) => localizedEnemyType(id as EnemyType, locale)}
         />
       )}
     </div>
@@ -306,6 +330,7 @@ function TargetStep({
   target: Target;
   onChange: (t: Target) => void;
 }) {
+  const tr = useT();
   const { locale } = useLocale();
   const compatible = new Set(getCompatibleTargets(condition));
   const targets: TargetType[] = [
@@ -331,17 +356,18 @@ function TargetStep({
         )}
       </p>
       <div className="grid grid-cols-2 gap-2">
-        {targets.map((t) => {
-          const enabled = compatible.has(t);
-          const selected = target.type === t;
+        {targets.map((tt) => {
+          const enabled = compatible.has(tt);
+          const selected = target.type === tt;
           return (
             <button
-              key={t}
+              key={tt}
               type="button"
               disabled={!enabled}
-              onClick={() => onChange({ type: t })}
+              onClick={() => onChange({ type: tt })}
+              title={tt}
               className={
-                "px-3 py-2 text-sm font-mono rounded border text-left " +
+                "px-3 py-2 text-sm rounded border text-left " +
                 (selected
                   ? "bg-blue-600 text-white border-blue-600"
                   : enabled
@@ -349,7 +375,7 @@ function TargetStep({
                     : "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed")
               }
             >
-              {t}
+              {tr(`target.${tt}` as StringKey)}
             </button>
           );
         })}
@@ -371,6 +397,7 @@ function ActionStep({
   action: Action;
   onChange: (a: Action) => void;
 }) {
+  const tr = useT();
   const { locale } = useLocale();
   const allowed = getJobActions(jobId);
 
@@ -387,14 +414,15 @@ function ActionStep({
             key={type}
             type="button"
             onClick={() => onChange(initialActionForType(type))}
+            title={type}
             className={
-              "px-2.5 py-1 text-xs font-mono rounded border " +
+              "px-2.5 py-1 text-xs rounded border " +
               (action.type === type
                 ? "bg-blue-600 text-white border-blue-600"
                 : "bg-white border-slate-300 hover:bg-slate-100")
             }
           >
-            {type}
+            {tr(`action.${type}` as StringKey)}
           </button>
         ))}
       </div>
@@ -405,6 +433,7 @@ function ActionStep({
           options={SKILL_IDS}
           value={action.skillId}
           onChange={(v) => onChange({ type: "SKILL", skillId: v as (typeof SKILL_IDS)[number] })}
+          getLabel={(id) => localizedSkill(id, locale)}
         />
       )}
       {action.type === "CAST_OFFENSE" && (
@@ -418,6 +447,12 @@ function ActionStep({
               spellId: v as (typeof OFFENSE_SPELL_IDS)[number],
             })
           }
+          getLabel={(id) =>
+            localizedOffenseSpell(
+              id as (typeof OFFENSE_SPELL_IDS)[number],
+              locale,
+            )
+          }
         />
       )}
       {action.type === "CAST_HEAL" && (
@@ -427,6 +462,9 @@ function ActionStep({
           value={action.spellId}
           onChange={(v) =>
             onChange({ type: "CAST_HEAL", spellId: v as (typeof HEAL_SPELL_IDS)[number] })
+          }
+          getLabel={(id) =>
+            localizedHealSpell(id as (typeof HEAL_SPELL_IDS)[number], locale)
           }
         />
       )}
@@ -438,6 +476,7 @@ function ActionStep({
           onChange={(v) =>
             onChange({ type: "CAST_REVIVE", spellId: v as (typeof REVIVE_SPELL_IDS)[number] })
           }
+          getLabel={(id) => translate(`spell.${id}` as StringKey, locale)}
         />
       )}
       {action.type === "CAST_BUFF" && (
@@ -446,6 +485,9 @@ function ActionStep({
           options={BUFF_IDS}
           value={action.buffId}
           onChange={(v) => onChange({ type: "CAST_BUFF", buffId: v as (typeof BUFF_IDS)[number] })}
+          getLabel={(id) =>
+            localizedBuff(id as (typeof BUFF_IDS)[number], locale)
+          }
         />
       )}
       {action.type === "CAST_DEBUFF" && (
@@ -456,6 +498,9 @@ function ActionStep({
           onChange={(v) =>
             onChange({ type: "CAST_DEBUFF", debuffId: v as (typeof DEBUFF_IDS)[number] })
           }
+          getLabel={(id) =>
+            localizedDebuff(id as (typeof DEBUFF_IDS)[number], locale)
+          }
         />
       )}
       {action.type === "CAST_CURE_STATUS" && (
@@ -464,6 +509,7 @@ function ActionStep({
           options={STATUSES}
           value={action.status}
           onChange={(v) => onChange({ type: "CAST_CURE_STATUS", status: v as Status })}
+          getLabel={(id) => localizedStatus(id as Status, locale)}
         />
       )}
       {action.type === "USE_ITEM" && (
@@ -472,6 +518,9 @@ function ActionStep({
           options={ITEM_IDS}
           value={action.itemId}
           onChange={(v) => onChange({ type: "USE_ITEM", itemId: v as (typeof ITEM_IDS)[number] })}
+          getLabel={(id) =>
+            localizedItem(id as (typeof ITEM_IDS)[number], locale)
+          }
         />
       )}
     </div>
@@ -510,32 +559,54 @@ function ValueSlider({
   );
 }
 
+/**
+ * 汎用セレクタ：value はコード ID（"FIRA" など）、表示ラベルは locale 由来。
+ *
+ * native <select> は Chromium で popup がクリップされて「開かないことがある」
+ * バグがあるため、本アプリでは select を使わず toggle button 群で実装。
+ * - `getLabel` 省略時は value をそのまま表示（旧挙動）
+ */
 function EnumSelector({
   label,
   options,
   value,
   onChange,
+  getLabel,
 }: {
   label: string;
   options: readonly string[];
   value: string;
   onChange: (v: string) => void;
+  getLabel?: (id: string) => string;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <label className="text-xs text-slate-500 shrink-0">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="border border-slate-300 rounded px-2 py-1 text-sm font-mono"
+    <div className="flex flex-col gap-1">
+      <span className="text-xs text-slate-500">{label}</span>
+      <div
+        className="flex flex-wrap gap-1"
+        role="group"
         aria-label={label}
       >
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
+        {options.map((o) => {
+          const active = value === o;
+          return (
+            <button
+              key={o}
+              type="button"
+              onClick={() => onChange(o)}
+              aria-pressed={active}
+              className={
+                "px-2 py-0.5 text-xs rounded border " +
+                (active
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100")
+              }
+            >
+              {getLabel ? getLabel(o) : o}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

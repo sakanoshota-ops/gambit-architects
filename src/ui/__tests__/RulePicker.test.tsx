@@ -45,12 +45,12 @@ describe("RulePicker - ステップ遷移", () => {
     expect(screen.getByText("自身")).toBeInTheDocument();
     // 次へ（対象）
     fireEvent.click(screen.getByRole("button", { name: /次へ（対象）/ }));
-    // Step 2 で対象選択肢が見える（SELF / ALLY_LOWEST_HP など）
-    expect(screen.getByRole("button", { name: /^SELF$/ })).toBeInTheDocument();
+    // Step 2 で対象選択肢が見える（target.SELF = 自分 / target.ALLY_LOWEST_HP = HP最低の味方）
+    expect(screen.getByRole("button", { name: "自分" })).toBeInTheDocument();
     // 次へ（行動）
     fireEvent.click(screen.getByRole("button", { name: /次へ（行動）/ }));
-    // Step 3 で行動選択肢が見える
-    expect(screen.getByRole("button", { name: /^ATTACK$/ })).toBeInTheDocument();
+    // Step 3 で行動選択肢が見える（action.ATTACK = 攻撃）
+    expect(screen.getByRole("button", { name: "攻撃" })).toBeInTheDocument();
   });
 
   it("Step 2 で「戻る」を押すと Step 1 へ", () => {
@@ -65,19 +65,20 @@ describe("RulePicker - 対象の互換性フィルタ", () => {
   it("条件が ENEMY_EXISTS（デフォルト）のときは ALLY_MATCH が disabled", () => {
     render(<RulePicker open={true} jobId="SWORDSMAN" onSave={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /次へ（対象）/ }));
-    const allyMatchBtn = screen.getByRole("button", { name: /^ALLY_MATCH$/ });
+    // target.ALLY_MATCH = 条件で選んだ味方、target.ENEMY_MATCH = 条件で選んだ敵
+    const allyMatchBtn = screen.getByRole("button", { name: "条件で選んだ味方" });
     expect(allyMatchBtn).toBeDisabled();
-    const enemyMatchBtn = screen.getByRole("button", { name: /^ENEMY_MATCH$/ });
+    const enemyMatchBtn = screen.getByRole("button", { name: "条件で選んだ敵" });
     expect(enemyMatchBtn).not.toBeDisabled();
   });
 
   it("条件を ALLY_DEAD に変えると ALLY_MATCH が有効、ENEMY_MATCH が disabled", () => {
     render(<RulePicker open={true} jobId="SWORDSMAN" onSave={vi.fn()} onCancel={vi.fn()} />);
-    // Step 1 で ALLY_DEAD を選択
-    fireEvent.click(screen.getByRole("button", { name: /^ALLY_DEAD$/ }));
+    // Step 1 で ALLY_DEAD を選択（conditionLabel.ALLY_DEAD = 戦闘不能の味方）
+    fireEvent.click(screen.getByRole("button", { name: "戦闘不能の味方" }));
     fireEvent.click(screen.getByRole("button", { name: /次へ（対象）/ }));
-    expect(screen.getByRole("button", { name: /^ALLY_MATCH$/ })).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: /^ENEMY_MATCH$/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "条件で選んだ味方" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "条件で選んだ敵" })).toBeDisabled();
   });
 });
 
@@ -86,17 +87,18 @@ describe("RulePicker - ジョブによる行動フィルタ", () => {
     render(<RulePicker open={true} jobId="SWORDSMAN" onSave={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /次へ（対象）/ }));
     fireEvent.click(screen.getByRole("button", { name: /次へ（行動）/ }));
-    expect(screen.queryByRole("button", { name: /^CAST_OFFENSE$/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^ATTACK$/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^PROVOKE$/ })).toBeInTheDocument();
+    // action.CAST_OFFENSE = 攻撃魔法、action.ATTACK = 攻撃、action.PROVOKE = 挑発
+    expect(screen.queryByRole("button", { name: "攻撃魔法" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "攻撃" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "挑発" })).toBeInTheDocument();
   });
 
   it("魔導士には CAST_OFFENSE が表示され、PROVOKE は表示されない", () => {
     render(<RulePicker open={true} jobId="MAGE" onSave={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /次へ（対象）/ }));
     fireEvent.click(screen.getByRole("button", { name: /次へ（行動）/ }));
-    expect(screen.getByRole("button", { name: /^CAST_OFFENSE$/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^PROVOKE$/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "攻撃魔法" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "挑発" })).not.toBeInTheDocument();
   });
 });
 
@@ -118,8 +120,8 @@ describe("RulePicker - 編集モード", () => {
         onCancel={vi.fn()}
       />,
     );
-    // Step 1: ALLY_HP_LT が選択中（青背景の判定が難しいので存在チェックのみ）
-    expect(screen.getByRole("button", { name: /^ALLY_HP_LT$/ })).toBeInTheDocument();
+    // Step 1: ALLY_HP_LT が選択中（conditionLabel.ALLY_HP_LT = 味方のHP低下）
+    expect(screen.getByRole("button", { name: "味方のHP低下" })).toBeInTheDocument();
     // スライダーの値が 30
     expect(screen.getByText("30")).toBeInTheDocument();
     // 題名が「ルール編集」

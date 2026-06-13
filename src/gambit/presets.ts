@@ -12,7 +12,8 @@ import { GAMBIT_SCHEMA_VERSION, type GambitSet } from "./types";
 
 /**
  * 8.1 「初心者向け：自動回復＋通常攻撃」
- * 治癒士・魔導士向け。M1 の剣士に当てると魔法が空振りして通常攻撃だけになる。
+ * 治癒士・魔導士向け。M3-G で HOLY 弱点ルールを追加（聖弱点ボス対策）。
+ * 剣士に当てると魔法は空振りして通常攻撃に流れる。
  */
 export function presetBeginner(characterId: string): GambitSet {
   return {
@@ -36,6 +37,13 @@ export function presetBeginner(characterId: string): GambitSet {
       {
         id: "r3",
         enabled: true,
+        condition: { type: "ENEMY_WEAK_TO", element: "HOLY" },
+        target: { type: "ENEMY_MATCH" },
+        action: { type: "CAST_OFFENSE", spellId: "HOLY_BOLT" },
+      },
+      {
+        id: "r4",
+        enabled: true,
         condition: { type: "ENEMY_EXISTS" },
         target: { type: "ENEMY_MATCH" },
         action: { type: "ATTACK" },
@@ -46,7 +54,7 @@ export function presetBeginner(characterId: string): GambitSet {
 
 /**
  * 8.2 「弱点突き優先」
- * 魔導士向け。剣士に当てると魔法は全部空振り → 最終的に通常攻撃。
+ * 魔導士向け。M3-G で HOLY ルールを先頭付近に追加（ボスは全て聖弱点）。
  */
 export function presetExploitWeakness(characterId: string): GambitSet {
   return {
@@ -63,26 +71,33 @@ export function presetExploitWeakness(characterId: string): GambitSet {
       {
         id: "r2",
         enabled: true,
+        condition: { type: "ENEMY_WEAK_TO", element: "HOLY" },
+        target: { type: "ENEMY_MATCH" },
+        action: { type: "CAST_OFFENSE", spellId: "HOLY_BOLT" },
+      },
+      {
+        id: "r3",
+        enabled: true,
         condition: { type: "ENEMY_WEAK_TO", element: "FIRE" },
         target: { type: "ENEMY_MATCH" },
         action: { type: "CAST_OFFENSE", spellId: "FIRA" },
       },
       {
-        id: "r3",
+        id: "r4",
         enabled: true,
         condition: { type: "ENEMY_WEAK_TO", element: "ICE" },
         target: { type: "ENEMY_MATCH" },
         action: { type: "CAST_OFFENSE", spellId: "BLIZZARA" },
       },
       {
-        id: "r4",
+        id: "r5",
         enabled: true,
         condition: { type: "ENEMY_WEAK_TO", element: "THUNDER" },
         target: { type: "ENEMY_MATCH" },
         action: { type: "CAST_OFFENSE", spellId: "THUNDARA" },
       },
       {
-        id: "r5",
+        id: "r6",
         enabled: true,
         condition: { type: "ENEMY_EXISTS" },
         target: { type: "ENEMY_MATCH" },

@@ -138,24 +138,44 @@ export function SettingsScreen() {
           {ja ? "ガンビット共有" : "Gambit Share"}
         </p>
 
-        <label className="flex items-center gap-2 text-sm">
-          <span>{ja ? "対象キャラ：" : "Character:"}</span>
-          <select
-            value={selectedId}
-            onChange={(e) => {
-              setSelectedId(e.target.value);
-              setExportText("");
-              setMessage(null);
-            }}
-            className="border border-slate-300 rounded px-2 py-1 text-sm"
+        {/*
+          M3-G-14：select は <main overflow-auto> 配下で popup がクリップされるため
+          4 ボタンの toggle に置き換え
+        */}
+        <div className="space-y-1">
+          <p className="text-xs text-slate-500">
+            {ja ? "対象キャラ" : "Character"}
+          </p>
+          <div
+            className="flex flex-wrap gap-1"
+            role="group"
+            aria-label={ja ? "対象キャラ" : "Character"}
           >
-            {data.party.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} ({localizedJobName(u.jobId, locale)})
-              </option>
-            ))}
-          </select>
-        </label>
+            {data.party.map((u) => {
+              const active = u.id === selectedId;
+              return (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedId(u.id);
+                    setExportText("");
+                    setMessage(null);
+                  }}
+                  aria-pressed={active}
+                  className={
+                    "px-2 py-1 text-xs rounded border " +
+                    (active
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100")
+                  }
+                >
+                  {u.name} ({localizedJobName(u.jobId, locale)})
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="space-y-1">
           <p className="text-xs text-slate-500">{ja ? "エクスポート" : "Export"}</p>

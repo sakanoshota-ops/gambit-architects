@@ -15,8 +15,18 @@ import {
   type ReactNode,
 } from "react";
 
-import type { Unit } from "../battle/types";
+import type { JobId, Unit } from "../battle/types";
+import {
+  createHealer,
+  createMage,
+  createSwordsman,
+} from "../data/jobs";
 import type { GambitSet } from "../gambit/types";
+import {
+  presetBeginner,
+  presetExploitWeakness,
+  presetTank,
+} from "../gambit/presets";
 import type { Locale } from "../i18n/strings";
 import { createDefaultPlayerData } from "./defaults";
 import { loadPlayerData, savePlayerData } from "./storage";
@@ -75,6 +85,7 @@ export type PlayerAction =
   | { type: "RECORD_BATTLE"; battle: LastBattleRecord }
   | { type: "SET_BATTLE_SPEED"; speed: 1 | 2 | 4 }
   | { type: "SET_LOCALE"; locale: Locale }
+  | { type: "UPDATE_UNIT_JOB"; unitId: string; newJobId: JobId }
   | { type: "RESET_TO_DEFAULTS" };
 
 function reducer(state: PlayerData, action: PlayerAction): PlayerData {
@@ -124,8 +135,32 @@ function reducer(state: PlayerData, action: PlayerAction): PlayerData {
     case "SET_LOCALE":
       return { ...state, settings: { ...state.settings, locale: action.locale } };
 
+    case "UPDATE_UNIT_JOB": {
+      // ジョブ変更：ユニットを新ジョブの初期値で作り直し、
+      // id と name は維持、equipment と gambitSet はジョブ用デフォルトにリセット
+      const target = state.party.find((u) => u.id === action.unitId);
+      if (!target) return state;
+      const newUnit = createUnitForJob(action.newJobId, target.id, target.name);
+      return {
+        ...state,
+        party: state.party.map((u) => (u.id === action.unitId ? newUnit : u)),
+      };
+    }
+
     case "RESET_TO_DEFAULTS":
       return createDefaultPlayerData();
+  }
+}
+
+/** ジョブ別の Unit 生成ヘルパ（既定プリセットを乗せる） */
+function createUnitForJob(jobId: JobId, id: string, name: string): Unit {
+  switch (jobId) {
+    case "SWORDSMAN":
+      return createSwordsman(id, name, presetTank(id));
+    case "MAGE":
+      return createMage(id, name, presetExploitWeakness(id));
+    case "HEALER":
+      return createHealer(id, name, presetBeginner(id));
   }
 }
 

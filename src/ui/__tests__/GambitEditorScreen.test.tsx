@@ -55,14 +55,16 @@ function renderEditor(charId = "ally_1"): PlayerData {
 }
 
 describe("GambitEditorScreen 初期表示", () => {
-  it("対象キャラの presetTank のルール 4 つを表示する", () => {
+  it("対象キャラの presetTank のルール 4 つを表示する（M3-G-16: ローカライズ済み）", () => {
     renderEditor("ally_1");
     expect(screen.getByText("編集：Sword1")).toBeInTheDocument();
-    // presetTank の 4 ルール
-    expect(screen.getByText(/ALLY_TARGETED → ALLY_MATCH → INTERPOSE/)).toBeInTheDocument();
-    expect(screen.getByText(/SELF_HP_LT.*→ SELF → DEFEND/)).toBeInTheDocument();
-    expect(screen.getByText(/BOSS_PRESENT → SELF → PROVOKE/)).toBeInTheDocument();
-    expect(screen.getByText(/ENEMY_EXISTS → ENEMY_MATCH → ATTACK/)).toBeInTheDocument();
+    // presetTank の 4 ルール（日本語ラベル）
+    expect(
+      screen.getByText(/狙われている味方 → 条件で選んだ味方 → かばう/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/自分の HP < 50% → 自分 → 防御/)).toBeInTheDocument();
+    expect(screen.getByText(/ボスがいる → 自分 → 挑発/)).toBeInTheDocument();
+    expect(screen.getByText(/敵がいる → 条件で選んだ敵 → 攻撃/)).toBeInTheDocument();
   });
 
   it("存在しない charId では見つかりませんメッセージ", () => {
@@ -85,11 +87,11 @@ describe("GambitEditorScreen のルール操作（下書きモード）", () => 
     expect(upButtons[1]).not.toBeDisabled();
 
     fireEvent.click(upButtons[1]); // 2 番目を上に
-    // 1 番目に SELF_HP_LT 系（元 r2）が来ているはず
+    // 1 番目に SELF_HP_LT 系（元 r2 = 自分の HP < 50% → 自分 → 防御）が来ているはず
     const list = screen.getByRole("list");
     const items = within(list).getAllByRole("listitem");
-    expect(items[0]).toHaveTextContent(/SELF_HP_LT/);
-    expect(items[1]).toHaveTextContent(/ALLY_TARGETED/);
+    expect(items[0]).toHaveTextContent(/自分の HP/);
+    expect(items[1]).toHaveTextContent(/狙われている味方/);
 
     // 未保存マーク
     expect(screen.getByText(/未保存の変更あり/)).toBeInTheDocument();
@@ -112,7 +114,8 @@ describe("GambitEditorScreen のルール操作（下書きモード）", () => 
     fireEvent.click(removeButtons[0]); // 先頭削除
 
     expect(within(list).getAllByRole("listitem")).toHaveLength(3);
-    expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent(/SELF_HP_LT/);
+    // 先頭が削除された後は元 r2（自分の HP < 50% → 自分 → 防御）が先頭
+    expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent(/自分の HP/);
 
     vi.restoreAllMocks();
   });
@@ -142,14 +145,15 @@ describe("GambitEditorScreen のプリセットロード", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     renderEditor("ally_1");
 
-    // 初期は presetTank（4 ルール）
-    expect(screen.getByText(/INTERPOSE/)).toBeInTheDocument();
+    // 初期は presetTank（4 ルール） - "かばう" (INTERPOSE) が含まれる
+    expect(screen.getByText(/かばう/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "止め刺し" }));
 
-    // presetFinisher の特徴的なルールが現れる
-    expect(screen.queryByText(/INTERPOSE/)).not.toBeInTheDocument();
-    expect(screen.getByText(/ENEMY_LOWEST_HP/)).toBeInTheDocument();
+    // presetFinisher の特徴的なルールが現れる - かばう は消えて HP 最低の敵 が出る
+    expect(screen.queryByText(/かばう/)).not.toBeInTheDocument();
+    // 辞書の表記は "HP 最低の敵"（HP の後にスペース）
+    expect(screen.getByText(/HP\s*最低の敵/)).toBeInTheDocument();
     // 未保存マーク
     expect(screen.getByText(/未保存の変更あり/)).toBeInTheDocument();
 

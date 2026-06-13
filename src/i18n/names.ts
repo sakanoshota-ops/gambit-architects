@@ -14,14 +14,18 @@
 import type { JobId } from "../battle/types";
 import type { ArmorId, SensorId, WeaponId } from "../data/equipment";
 import type {
+  Action,
   BuffId,
+  Condition,
   DebuffId,
   Element,
   EnemyType,
+  GambitRule,
   HealSpellId,
   ItemId,
   OffenseSpellId,
   Status,
+  Target,
 } from "../gambit/types";
 
 import { translate, type Locale, type StringKey } from "./strings";
@@ -90,4 +94,65 @@ export function localizedSkill(id: string, locale: Locale): string {
 
 export function localizedActionType(type: string, locale: Locale): string {
   return safeT(`action.${type}`, locale, type);
+}
+
+// ============================================================================
+// ガンビットルール 1 行を組み立てる（条件 → 対象 → 行動）
+// ============================================================================
+
+/** 条件の人間可読表記（プレースホルダ {value}/{status} 等は埋めた状態）*/
+export function localizedCondition(c: Condition, locale: Locale): string {
+  const key = `condition.${c.type}` as StringKey;
+  if ("value" in c) {
+    return translate(key, locale, { value: c.value });
+  }
+  if ("status" in c) {
+    return translate(key, locale, { status: localizedStatus(c.status, locale) });
+  }
+  if ("element" in c) {
+    return translate(key, locale, { element: localizedElement(c.element, locale) });
+  }
+  if ("enemyType" in c) {
+    return translate(key, locale, {
+      enemyType: localizedEnemyType(c.enemyType, locale),
+    });
+  }
+  return translate(key, locale);
+}
+
+/** 対象の人間可読表記 */
+export function localizedTarget(t: Target, locale: Locale): string {
+  return safeT(`target.${t.type}`, locale, t.type);
+}
+
+/** 行動の人間可読表記（パラメータ付きは括弧で補足）*/
+export function localizedAction(a: Action, locale: Locale): string {
+  const typeLabel = localizedActionType(a.type, locale);
+  if ("spellId" in a) {
+    return `${typeLabel}（${safeT(`spell.${a.spellId}`, locale, a.spellId)}）`;
+  }
+  if ("skillId" in a) {
+    return `${typeLabel}（${localizedSkill(a.skillId, locale)}）`;
+  }
+  if ("buffId" in a) {
+    return `${typeLabel}（${localizedBuff(a.buffId, locale)}）`;
+  }
+  if ("debuffId" in a) {
+    return `${typeLabel}（${localizedDebuff(a.debuffId, locale)}）`;
+  }
+  if ("status" in a) {
+    return `${typeLabel}（${localizedStatus(a.status, locale)}）`;
+  }
+  if ("itemId" in a) {
+    return `${typeLabel}（${localizedItem(a.itemId, locale)}）`;
+  }
+  return typeLabel;
+}
+
+/** ルール 1 行のサマリ：条件 → 対象 → 行動 */
+export function localizedRuleSummary(rule: GambitRule, locale: Locale): string {
+  return `${localizedCondition(rule.condition, locale)} → ${localizedTarget(
+    rule.target,
+    locale,
+  )} → ${localizedAction(rule.action, locale)}`;
 }

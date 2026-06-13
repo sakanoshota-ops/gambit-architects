@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
+import type { JobId } from "../../battle/types";
+import { JOB_IDS } from "../../battle/types";
 import {
   localizedArmor,
   localizedJobName,
@@ -20,6 +22,15 @@ export function PartyScreen() {
   const editingUnit = equippingId
     ? data.party.find((u) => u.id === equippingId)
     : undefined;
+
+  function handleJobChange(unitId: string, newJobId: JobId) {
+    const msg =
+      locale === "ja"
+        ? "ジョブを変更すると装備とガンビットが初期化されます。よろしいですか？"
+        : "Changing job will reset equipment and gambit rules. Continue?";
+    if (!confirm(msg)) return;
+    dispatch({ type: "UPDATE_UNIT_JOB", unitId, newJobId });
+  }
 
   return (
     <section className="space-y-4">
@@ -44,13 +55,41 @@ export function PartyScreen() {
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold">
-                    {u.name}{" "}
-                    <span className="text-xs text-slate-500">
-                      ({localizedJobName(u.jobId, locale)})
-                    </span>
+                  <div className="font-semibold">{u.name}</div>
+                  {/*
+                    ジョブ切替：select だと <main overflow-auto> 配下で popup が
+                    クリップされる Chromium バグがあるため、3 ボタンの toggle にする。
+                    クリックで即変更（confirm で警告）
+                  */}
+                  <div
+                    className="flex items-center gap-1 mt-1"
+                    role="group"
+                    aria-label={locale === "ja" ? "ジョブ" : "Job"}
+                  >
+                    {JOB_IDS.map((jid) => {
+                      const active = u.jobId === jid;
+                      return (
+                        <button
+                          key={jid}
+                          type="button"
+                          onClick={() => {
+                            if (active) return; // 同じジョブはスキップ
+                            handleJobChange(u.id, jid);
+                          }}
+                          aria-pressed={active}
+                          className={
+                            "px-2 py-0.5 text-xs rounded border font-normal " +
+                            (active
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100")
+                          }
+                        >
+                          {localizedJobName(jid, locale)}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="text-sm text-slate-600 mt-0.5">
+                  <div className="text-sm text-slate-600 mt-1">
                     HP {u.hp}/{u.hpMax} ・ MP {u.mp}/{u.mpMax}
                   </div>
                 </div>

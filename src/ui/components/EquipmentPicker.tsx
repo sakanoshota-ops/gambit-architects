@@ -8,6 +8,7 @@
  */
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   ARMORS,
@@ -79,7 +80,9 @@ export function EquipmentPicker({ open, unit, onSave, onCancel }: EquipmentPicke
     });
   }
 
-  return (
+  // M3-G-12：Portal で document.body 直下に描画して
+  // 親 <main overflow-auto> の影響を受けないようにする
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -152,7 +155,8 @@ export function EquipmentPicker({ open, unit, onSave, onCancel }: EquipmentPicke
           </button>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -160,6 +164,11 @@ export function EquipmentPicker({ open, unit, onSave, onCancel }: EquipmentPicke
 // 内部部品
 // ============================================================================
 
+/**
+ * 装備選択行：toggle ボタン群で実装。
+ * - native <select> は Chromium で「途中で開かなくなる」現象が起きるため避ける
+ * - 「なし」を含めて 4〜6 個のボタンを並べる（ジョブで装備可能な分のみフィルタ済）
+ */
 function SelectRow<TId extends string>({
   label,
   noneLabel,
@@ -174,21 +183,46 @@ function SelectRow<TId extends string>({
   options: Array<{ id: TId; label: string }>;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <label className="text-xs text-slate-500 w-14 shrink-0">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as TId | "")}
-        className="flex-1 border border-slate-300 rounded px-2 py-1 text-sm"
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs text-slate-500">{label}</span>
+      <div
+        className="flex flex-wrap gap-1.5"
+        role="group"
         aria-label={label}
       >
-        <option value="">{noneLabel}</option>
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-pressed={value === ""}
+          className={
+            "px-2 py-1 text-xs rounded border " +
+            (value === ""
+              ? "bg-blue-600 text-white border-blue-600"
+              : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100")
+          }
+        >
+          {noneLabel}
+        </button>
+        {options.map((o) => {
+          const active = value === o.id;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => onChange(o.id)}
+              aria-pressed={active}
+              className={
+                "px-2 py-1 text-xs rounded border " +
+                (active
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100")
+              }
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

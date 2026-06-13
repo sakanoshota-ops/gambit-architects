@@ -116,4 +116,32 @@ describe("敵・装備・状態などの ID 系翻訳", () => {
       );
     }
   });
+
+  it("STATUSES（types.ts 定義）全 14 種が辞書に存在する（M3-G-19 回帰防止）", () => {
+    const allStatuses = [
+      // 状態異常
+      "POISON",
+      "BLIND",
+      "SILENCE",
+      "SLEEP",
+      "STUN",
+      "BERSERK",
+      // バフ
+      "BUFF_ATK",
+      "BUFF_DEF",
+      "BUFF_MAG",
+      "REGEN",
+      "SHELL",
+      "PROTECT",
+      "HASTE",
+      // デバフ（速度系）
+      "SLOW",
+    ];
+    for (const st of allStatuses) {
+      const key = `status.${st}` as StringKey;
+      // ja・en どちらもキー文字列と一致しない＝翻訳されている
+      expect(translate(key, "ja"), `${key}.ja`).not.toBe(key);
+      expect(translate(key, "en"), `${key}.en`).not.toBe(key);
+    }
+  });
 });

@@ -124,13 +124,14 @@ describe("E2E：編成 → 編集 → ガンビット変更 → 戦闘", () => {
 
     // 設定タブで Sword1 が presetTank になっているか確認
     fireEvent.click(screen.getByRole("link", { name: "設定" }));
-    // Sword1 のルール文字列に "INTERPOSE" が含まれるかは設定画面では確認不可
-    // → 編成タブに戻って Sword1 を再度編集し、ルールリストに INTERPOSE が含まれていれば OK
+    // Sword1 のルール文字列に「かばう」(INTERPOSE) が含まれるかは設定画面では確認不可
+    // → 編成タブに戻って Sword1 を再度編集し、ルールリストに「かばう」が含まれていれば OK
 
     fireEvent.click(screen.getByRole("link", { name: "編成" }));
     const editLinks2 = screen.getAllByRole("link", { name: "編集" });
     fireEvent.click(editLinks2[0]);
-    expect(screen.getByText(/INTERPOSE/)).toBeInTheDocument();
+    // M3-G-16 でルール表示は日本語ローカライズ済み（INTERPOSE → かばう）
+    expect(screen.getByText(/かばう/)).toBeInTheDocument();
 
     vi.restoreAllMocks();
   });

@@ -22,6 +22,7 @@ import {
 import type { GambitRule } from "../../gambit/types";
 import { MAX_RULES_PER_SET } from "../../gambit/types";
 import { isActionAllowedForJob, isTargetCompatible } from "../../gambit/uiHelpers";
+import { localizedRuleSummary } from "../../i18n/names";
 import { useT } from "../../i18n/useT";
 import { usePlayer } from "../../state/PlayerContext";
 import { RulePicker } from "../components/RulePicker";
@@ -224,11 +225,11 @@ export function GambitEditorScreen() {
               type="button"
               onClick={() => openEditPicker(index)}
               className={
-                "flex-1 text-left text-sm font-mono rounded px-1 hover:bg-slate-50 transition-colors " +
+                "flex-1 text-left text-sm rounded px-1 hover:bg-slate-50 transition-colors " +
                 (rule.enabled ? "text-slate-800" : "line-through text-slate-400")
               }
             >
-              {ruleSummary(rule)}
+              {localizedRuleSummary(rule, locale)}
             </button>
             <div className="shrink-0 flex items-center gap-1">
               <button
@@ -338,28 +339,6 @@ export function GambitEditorScreen() {
 // ============================================================================
 // 補助関数
 // ============================================================================
-
-function ruleSummary(rule: GambitRule): string {
-  return `${describeCondition(rule.condition)} → ${rule.target.type} → ${describeAction(rule.action)}`;
-}
-
-function describeCondition(c: GambitRule["condition"]): string {
-  if ("value" in c) return `${c.type}(${c.value})`;
-  if ("status" in c) return `${c.type}(${c.status})`;
-  if ("element" in c) return `${c.type}(${c.element})`;
-  if ("enemyType" in c) return `${c.type}(${c.enemyType})`;
-  return c.type;
-}
-
-function describeAction(a: GambitRule["action"]): string {
-  if ("spellId" in a) return `${a.type}(${a.spellId})`;
-  if ("skillId" in a) return `${a.type}(${a.skillId})`;
-  if ("buffId" in a) return `${a.type}(${a.buffId})`;
-  if ("debuffId" in a) return `${a.type}(${a.debuffId})`;
-  if ("status" in a) return `${a.type}(${a.status})`;
-  if ("itemId" in a) return `${a.type}(${a.itemId})`;
-  return a.type;
-}
 
 function cloneRules(rules: GambitRule[]): GambitRule[] {
   return rules.map((r) => ({ ...r }));

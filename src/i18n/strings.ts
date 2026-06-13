@@ -183,6 +183,13 @@ export const STRINGS = {
   "status.SILENCE": { ja: "沈黙", en: "Silence" },
   "status.BLIND": { ja: "暗闇", en: "Blind" },
   "status.SLOW": { ja: "スロウ", en: "Slow" },
+  // M3-G-19：未翻訳分（types.ts に定義はあるが辞書に無かった）
+  "status.SLEEP": { ja: "睡眠", en: "Sleep" },
+  "status.STUN": { ja: "スタン", en: "Stun" },
+  "status.BERSERK": { ja: "バーサーク", en: "Berserk" },
+  "status.BUFF_ATK": { ja: "攻撃強化", en: "Atk Up" },
+  "status.BUFF_DEF": { ja: "防御強化", en: "Def Up" },
+  "status.BUFF_MAG": { ja: "魔力強化", en: "Mag Up" },
 
   // ----- 武器 -------------------------------------------------------------
   "weapon.BRONZE_SWORD": { ja: "ブロンズソード", en: "Bronze Sword" },
@@ -282,6 +289,29 @@ export const STRINGS = {
   "condition.ENEMY_WEAK_TO": { ja: "{element} 弱点の敵", en: "Enemy weak to {element}" },
   "condition.ENEMY_TYPE": { ja: "{enemyType} 系の敵", en: "{enemyType}-type enemy" },
   "condition.BOSS_PRESENT": { ja: "ボスがいる", en: "Boss present" },
+
+  // ----- ガンビット条件タイプ：選択ボタン用の短縮ラベル（プレースホルダーなし）-----
+  "conditionLabel.SELF_HP_LT": { ja: "自分のHP低下", en: "Self HP low" },
+  "conditionLabel.SELF_HP_GTE": { ja: "自分のHP残量", en: "Self HP high" },
+  "conditionLabel.SELF_MP_LT": { ja: "自分のMP低下", en: "Self MP low" },
+  "conditionLabel.SELF_MP_GTE": { ja: "自分のMP残量", en: "Self MP high" },
+  "conditionLabel.SELF_HAS_STATUS": { ja: "自分が状態異常", en: "Self has status" },
+  "conditionLabel.SELF_NO_STATUS": { ja: "自分は状態異常でない", en: "Self lacks status" },
+  "conditionLabel.ALLY_HP_LT": { ja: "味方のHP低下", en: "Ally HP low" },
+  "conditionLabel.ALLY_HP_GTE": { ja: "味方のHP残量", en: "Ally HP high" },
+  "conditionLabel.ALLY_MP_LT": { ja: "味方のMP低下", en: "Ally MP low" },
+  "conditionLabel.ALLY_MP_GTE": { ja: "味方のMP残量", en: "Ally MP high" },
+  "conditionLabel.ALLY_HAS_STATUS": { ja: "味方が状態異常", en: "Ally has status" },
+  "conditionLabel.ALLY_DEAD": { ja: "戦闘不能の味方", en: "Dead ally" },
+  "conditionLabel.ALLY_TARGETED": { ja: "狙われている味方", en: "Targeted ally" },
+  "conditionLabel.ENEMY_EXISTS": { ja: "敵がいる", en: "Enemy exists" },
+  "conditionLabel.ENEMY_LOWEST_HP": { ja: "HP最低の敵", en: "Lowest HP enemy" },
+  "conditionLabel.ENEMY_HIGHEST_HP": { ja: "HP最高の敵", en: "Highest HP enemy" },
+  "conditionLabel.ENEMY_HAS_STATUS": { ja: "状態異常の敵", en: "Enemy with status" },
+  "conditionLabel.ENEMY_NO_STATUS": { ja: "状態異常でない敵", en: "Enemy without status" },
+  "conditionLabel.ENEMY_WEAK_TO": { ja: "弱点属性の敵", en: "Weakness-matched enemy" },
+  "conditionLabel.ENEMY_TYPE": { ja: "指定種族の敵", en: "Type-matched enemy" },
+  "conditionLabel.BOSS_PRESENT": { ja: "ボスがいる", en: "Boss present" },
 
   // ----- ガンビット対象タイプ ----------------------------------------------
   "target.SELF": { ja: "自分", en: "Self" },

@@ -1,5 +1,5 @@
 /**
- * EquipmentPicker のテスト（M3-D）
+ * EquipmentPicker のテスト（M3-D / M3-G-15 で button UI に変更）
  *
  * - 開閉
  * - ジョブ制限：剣士に剣しか出さない、ロッドは出さない
@@ -25,7 +25,9 @@ describe("EquipmentPicker - 開閉", () => {
         onCancel={vi.fn()}
       />,
     );
+    // Portal 化で container は空、document.body にも dialog がないこと
     expect(container.firstChild).toBeNull();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("open=true でダイアログが見える", () => {
@@ -64,12 +66,19 @@ describe("EquipmentPicker - ジョブ制限", () => {
         onCancel={vi.fn()}
       />,
     );
-    const weaponSelect = screen.getByLabelText("武器") as HTMLSelectElement;
-    const optionTexts = Array.from(weaponSelect.options).map((o) => o.text);
-    expect(optionTexts).toContain("ブロンズソード");
-    expect(optionTexts).toContain("スティールソード");
-    expect(optionTexts).not.toContain("魔導士のロッド");
-    expect(optionTexts).not.toContain("治癒のメイス");
+    const weaponGroup = screen.getByRole("group", { name: "武器" });
+    expect(
+      within(weaponGroup).getByRole("button", { name: "ブロンズソード" }),
+    ).toBeInTheDocument();
+    expect(
+      within(weaponGroup).getByRole("button", { name: "スティールソード" }),
+    ).toBeInTheDocument();
+    expect(
+      within(weaponGroup).queryByRole("button", { name: "魔導士のロッド" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(weaponGroup).queryByRole("button", { name: "治癒のメイス" }),
+    ).not.toBeInTheDocument();
   });
 
   it("魔導士にはロッド 3 種のみ表示（剣やメイスは出ない）", () => {
@@ -82,14 +91,19 @@ describe("EquipmentPicker - ジョブ制限", () => {
         onCancel={vi.fn()}
       />,
     );
-    const weaponSelect = screen.getByLabelText("武器") as HTMLSelectElement;
-    const optionTexts = Array.from(weaponSelect.options).map((o) => o.text);
-    expect(optionTexts).toContain("魔導士のロッド");
-    expect(optionTexts).toContain("クリスタルスタッフ");
-    expect(optionTexts).not.toContain("ブロンズソード");
+    const weaponGroup = screen.getByRole("group", { name: "武器" });
+    expect(
+      within(weaponGroup).getByRole("button", { name: "魔導士のロッド" }),
+    ).toBeInTheDocument();
+    expect(
+      within(weaponGroup).getByRole("button", { name: "クリスタルスタッフ" }),
+    ).toBeInTheDocument();
+    expect(
+      within(weaponGroup).queryByRole("button", { name: "ブロンズソード" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("センサーはジョブ制限なし（4 種すべて）", () => {
+  it("センサーはジョブ制限なし（4 種 + なし = 5 ボタン）", () => {
     const unit = createSwordsman("a", "Sword", presetTank("a"));
     render(
       <EquipmentPicker
@@ -99,9 +113,9 @@ describe("EquipmentPicker - ジョブ制限", () => {
         onCancel={vi.fn()}
       />,
     );
-    const sensorSelect = screen.getByLabelText("センサー") as HTMLSelectElement;
-    // "なし" + 4 種 = 5 オプション
-    expect(sensorSelect.options.length).toBe(5);
+    const sensorGroup = screen.getByRole("group", { name: "センサー" });
+    const buttons = within(sensorGroup).getAllByRole("button");
+    expect(buttons.length).toBe(5);
   });
 });
 
@@ -135,8 +149,10 @@ describe("EquipmentPicker - 効果プレビュー", () => {
         onCancel={vi.fn()}
       />,
     );
-    const weaponSelect = screen.getByLabelText("武器");
-    fireEvent.change(weaponSelect, { target: { value: "STEEL_SWORD" } });
+    const weaponGroup = screen.getByRole("group", { name: "武器" });
+    fireEvent.click(
+      within(weaponGroup).getByRole("button", { name: "スティールソード" }),
+    );
 
     // ATK 25 → 40 (+15)
     expect(screen.getByText("40")).toBeInTheDocument(); // 装備後
@@ -152,15 +168,19 @@ describe("EquipmentPicker - 保存", () => {
       <EquipmentPicker open={true} unit={unit} onSave={onSave} onCancel={vi.fn()} />,
     );
 
-    fireEvent.change(screen.getByLabelText("武器"), {
-      target: { value: "IRON_SWORD" },
-    });
-    fireEvent.change(screen.getByLabelText("防具"), {
-      target: { value: "CHAIN_MAIL" },
-    });
-    fireEvent.change(screen.getByLabelText("センサー"), {
-      target: { value: "HP_SCANNER" },
-    });
+    const weaponGroup = screen.getByRole("group", { name: "武器" });
+    const armorGroup = screen.getByRole("group", { name: "防具" });
+    const sensorGroup = screen.getByRole("group", { name: "センサー" });
+
+    fireEvent.click(
+      within(weaponGroup).getByRole("button", { name: "アイアンソード" }),
+    );
+    fireEvent.click(
+      within(armorGroup).getByRole("button", { name: "チェインメイル" }),
+    );
+    fireEvent.click(
+      within(sensorGroup).getByRole("button", { name: "HP スキャナー" }),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "装備" }));
 
@@ -182,7 +202,9 @@ describe("EquipmentPicker - 保存", () => {
     );
 
     // 元々 STEEL_SWORD だったのを「なし」に
-    fireEvent.change(screen.getByLabelText("武器"), { target: { value: "" } });
+    const weaponGroup = screen.getByRole("group", { name: "武器" });
+    // 「なし」ボタンは「なし」というラベル
+    fireEvent.click(within(weaponGroup).getByRole("button", { name: "なし" }));
     fireEvent.click(screen.getByRole("button", { name: "装備" }));
 
     expect(onSave).toHaveBeenCalledWith({
