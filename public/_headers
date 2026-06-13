@@ -1,0 +1,14 @@
+# Cloudflare Pages headers
+# - service worker は no-cache（更新検知のため）
+# - 静的アセットは長期キャッシュ（ファイル名にハッシュ付くため）
+
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=3600
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

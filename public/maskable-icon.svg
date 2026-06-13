@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gambit Architects">
+  <title>Gambit Architects (maskable)</title>
+  <!-- Full background fill for maskable safe zone -->
+  <rect width="512" height="512" fill="#0f172a"/>
+
+  <!-- Stylized gear silhouette behind, smaller for safe zone (60% area) -->
+  <g opacity="0.18" fill="#60a5fa">
+    <circle cx="256" cy="256" r="120"/>
+    <circle cx="256" cy="256" r="72" fill="#0f172a"/>
+  </g>
+
+  <!-- "G" mark - smaller to fit safe zone -->
+  <text x="50%" y="58%"
+        font-family="system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="240"
+        font-weight="800"
+        fill="#60a5fa"
+        text-anchor="middle"
+        dominant-baseline="middle">G</text>
+</svg>

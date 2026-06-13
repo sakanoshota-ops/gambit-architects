@@ -114,7 +114,7 @@
 | M1 | コア検証（ガンビット評価器、最小戦闘ループ、ジョブ1） | ✅ **完了**（2026-05-10、61 tests、`pnpm run demo` 動作） |
 | M2 | プレイアブル化（UI、編集UI、ジョブ3、敵5、深度1〜5） | ✅ **完了**（2026-05-10、145 tests、`pnpm dev` で 1 周遊べる） |
 | M3 | コンテンツ拡充（装備、センサー、敵15、ボス4、procgen調整、耐性、日英ローカライズ） | ✅ **完了**（2026-06-13、272 tests、深度 20 クリア確認） |
-| M4 | **MVP公開**（itch.io、フィードバック収集） |
+| M4 | **MVP公開**（itch.io、Cloudflare Pages、PWA、ゲーム内フィードバックリンク） | 🟡 **進行中**（2026-06-13 着手、PWA + フィードバック + 公開手順書まで完了、手動デプロイと最終確認残） |
 | M5 | 磨き込み（UX、バランス、追加要素） |
 | M6 | **v1.0**（PWA化、共有機能、プリセット同梱） |
 
@@ -131,6 +131,10 @@
 - `docs/m3_checklist.md` … M3 完了チェックリスト v0.2（コンテンツ拡充フェーズ完了）
 - `docs/m3_demo_checklist.md` … M3-G 手動デモ手順書 v0.1（最後の 1 周検証用、20〜30 分）
 - `devlog/m3_retro.md` … M3 振り返り v0.1（達成項目・苦戦ポイント・M4 への申し送り）
+- `docs/m4_checklist.md` … M4 MVP 公開フェーズの計画 v0.1
+- `docs/m4_cloudflare_deploy.md` … Cloudflare Pages デプロイ手順書 v0.1
+- `docs/m4_itch_io.md` … itch.io 公開手順書 v0.1
+- `docs/m4_release_checklist.md` … M4 リリース最終チェックリスト v0.1
 - `docs/engine_decision.md` … エンジン選定の判断材料 v0.2（C 案で確定）
 - `docs/dev_env_setup.md` … 開発環境セットアップ手順 v0.1（Node/pnpm/Git/VS Code/Vite 初期化）
 - 今後追加予定：

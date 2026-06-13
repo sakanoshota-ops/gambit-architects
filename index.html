@@ -1,10 +1,33 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>gambit-architects</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- ファビコン -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="alternate icon" type="image/png" href="/icon-192.png" />
+
+    <!-- PWA: マニフェスト・テーマカラー（vite-plugin-pwa が自動注入する） -->
+    <meta name="theme-color" content="#0f172a" />
+
+    <!-- PWA: web app capable（標準 + iOS Safari の旧仕様も併記） -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Gambit" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- OG（共有時のプレビュー） -->
+    <meta property="og:title" content="Gambit Architects" />
+    <meta
+      property="og:description"
+      content="条件→対象→行動のルールを組んで AI 同士に戦わせる、FF12 ガンビット型オートバトル × プログラミング・サンドボックス。"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icon-512.png" />
+
+    <title>Gambit Architects</title>
   </head>
   <body>
     <div id="root"></div>

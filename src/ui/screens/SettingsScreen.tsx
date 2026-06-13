@@ -254,6 +254,94 @@ export function SettingsScreen() {
           {ja ? "セーブデータを初期化" : "Reset Save Data"}
         </button>
       </div>
+
+      {/* M4-B: フィードバック */}
+      <FeedbackSection />
+
+      {/* M4-B: バージョン情報 */}
+      <VersionSection />
     </section>
+  );
+}
+
+// ============================================================================
+// M4-B: フィードバック & バージョン
+// ============================================================================
+
+const GITHUB_ISSUES_URL =
+  "https://github.com/sakanoshota-ops/gambit-architects/issues/new";
+const FEEDBACK_EMAIL = "sakano.shota@gmail.com";
+
+function FeedbackSection() {
+  const t = useT();
+
+  const subject = encodeURIComponent(
+    `[Gambit Architects v${__APP_VERSION__}] Feedback`,
+  );
+  const body = encodeURIComponent(
+    `Version: ${__APP_VERSION__}\nUser-Agent: ${
+      typeof navigator !== "undefined" ? navigator.userAgent : ""
+    }\n\n`,
+  );
+  const mailto = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
+
+  return (
+    <div className="space-y-2 border-t border-slate-200 pt-4">
+      <p className="text-sm font-medium text-slate-700">
+        {t("settings.feedback")}
+      </p>
+      <p className="text-xs text-slate-500">{t("settings.feedbackIntro")}</p>
+      <div className="flex flex-wrap gap-2">
+        <a
+          href={GITHUB_ISSUES_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100 text-slate-700 inline-block"
+        >
+          {t("settings.feedbackGithub")}
+        </a>
+        <a
+          href={mailto}
+          className="px-3 py-1.5 text-sm border border-slate-300 rounded hover:bg-slate-100 text-slate-700 inline-block"
+        >
+          {t("settings.feedbackEmail")}
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function VersionSection() {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+
+  const ua =
+    typeof navigator !== "undefined" ? navigator.userAgent : "(no navigator)";
+  const versionInfo = `Gambit Architects v${__APP_VERSION__}\nUser-Agent: ${ua}`;
+
+  async function copyVersion() {
+    try {
+      await navigator.clipboard.writeText(versionInfo);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // 失敗時は何もしない（プライベートモードなど）
+    }
+  }
+
+  return (
+    <div className="space-y-1 border-t border-slate-200 pt-4">
+      <p className="text-sm font-medium text-slate-700">
+        {t("settings.version")}
+      </p>
+      <p className="text-xs text-slate-500 font-mono">v{__APP_VERSION__}</p>
+      <button
+        type="button"
+        onClick={copyVersion}
+        className="px-2 py-0.5 text-xs border border-slate-300 rounded hover:bg-slate-100 text-slate-600 mt-1"
+      >
+        {copied ? t("settings.copied") : t("settings.copyVersion")}
+      </button>
+    </div>
   );
 }

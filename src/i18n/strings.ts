@@ -131,6 +131,26 @@ export const STRINGS = {
   "settings.language": { ja: "言語", en: "Language" },
   "settings.ja": { ja: "日本語", en: "Japanese" },
   "settings.en": { ja: "英語", en: "English" },
+  // M4-B：フィードバック / バージョン情報
+  "settings.feedback": { ja: "フィードバック", en: "Feedback" },
+  "settings.feedbackIntro": {
+    ja: "バグ報告・要望は以下からどうぞ。バージョン番号も添えてもらえると助かります。",
+    en: "Send bug reports or feature requests here. Including the version number is appreciated.",
+  },
+  "settings.feedbackGithub": {
+    ja: "GitHub Issues を開く",
+    en: "Open GitHub Issues",
+  },
+  "settings.feedbackEmail": {
+    ja: "メールで送る",
+    en: "Send via Email",
+  },
+  "settings.version": { ja: "バージョン", en: "Version" },
+  "settings.copyVersion": {
+    ja: "バージョン情報をコピー",
+    en: "Copy version info",
+  },
+  "settings.copied": { ja: "コピーしました", en: "Copied" },
 
   // ----- ジョブ -----------------------------------------------------------
   "job.SWORDSMAN": { ja: "剣士", en: "Swordsman" },
