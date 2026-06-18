@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# OS-generated files
+desktop.ini
+Thumbs.db
+ehthumbs.db
+$RECYCLE.BIN/
